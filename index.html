@@ -2,1102 +2,1137 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Prototipo CAA - Preguntas, Oraciones y Pictogramas ARASAAC</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Preguntas, Oraciones, Proto2 e Imagen</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --bg: #f8fafc;
-      --card: #ffffff;
-      --text: #0f172a;
-      --text-muted: #64748b;
-      --border: #e2e8f0;
-      
-      /* Colores temáticos por función sintáctica */
-      --color-quien: #2563eb;       /* Azul - Sujeto */
-      --color-quien-bg: #eff6ff;
-      --color-que-hace: #7c3aed;    /* Púrpura - Verbo/Acción */
-      --color-que-hace-bg: #f5f3ff;
-      --color-que: #db2777;         /* Rosa - Objeto/Complemento */
-      --color-que-bg: #fdf2f8;
-      
-      --radius: 20px;
-      --radius-sm: 12px;
-      --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-      --shadow-md: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
-      --shadow-active: 0 4px 12px rgba(37, 99, 235, 0.25);
-    }
-
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       -webkit-tap-highlight-color: transparent;
+      user-select: none;
     }
 
-    body {
-      background-color: var(--bg);
-      color: var(--text);
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #f7f9fc;
+      font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+    }
+
+    /* Main layout */
+    .app-wrapper {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* Top Navigation Tabs */
+    .nav-tabs {
+      height: 48px;
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 100vh;
-      padding: 16px;
-    }
-
-    /* Contenedor principal tipo Dispositivo / Tablet para prototipado físico */
-    .device-frame {
-      background: var(--card);
-      width: 100%;
-      max-width: 680px;
-      border-radius: 32px;
-      box-shadow: var(--shadow-md), 0 0 0 8px #e2e8f0;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      border: 1px solid var(--border);
-    }
-
-    /* Encabezado */
-    .header {
-      padding: 20px 24px 16px;
-      background: #ffffff;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .header-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .badge {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      padding: 4px 10px;
-      border-radius: 20px;
-      background: #eff6ff;
-      color: var(--color-quien);
-    }
-
-    .arasaac-credit {
-      font-size: 11px;
-      color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .arasaac-credit a {
-      color: var(--color-quien);
-      text-decoration: none;
-      font-weight: 600;
-    }
-
-    /* Barra de la Oración Completa */
-    .sentence-bar {
-      background: #f1f5f9;
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 10px 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
-    .sentence-display {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      font-size: 15px;
-      font-weight: 600;
-    }
-
-    .sentence-chip {
-      padding: 4px 10px;
-      border-radius: 8px;
-      background: white;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-      border: 1px solid var(--border);
-    }
-
-    .sentence-chip.chip-quien { border-color: #93c5fd; color: var(--color-quien); }
-    .sentence-chip.chip-que-hace { border-color: #c4b5fd; color: var(--color-que-hace); }
-    .sentence-chip.chip-que { border-color: #f9a8d4; color: var(--color-que); }
-
-    .sentence-play-btn {
-      background: var(--color-quien);
-      color: white;
-      border: none;
-      border-radius: 10px;
-      padding: 8px 14px;
-      font-size: 13px;
-      font-weight: 700;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: all 0.15s ease;
-      white-space: nowrap;
-    }
-
-    .sentence-play-btn:hover {
-      background: #1d4ed8;
-      transform: translateY(-1px);
-    }
-
-    .sentence-play-btn:active {
-      transform: translateY(1px);
-    }
-
-    /* Selector y Creador de Oraciones */
-    .controls-bar {
-      padding: 12px 24px;
-      background: #fafafa;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
       gap: 10px;
-      flex-wrap: wrap;
+      padding: 6px 16px;
+      background: #ffffff;
+      border-bottom: 2px solid #e2e8f0;
+      z-index: 100;
+      flex-shrink: 0;
     }
 
-    .select-sentence-label {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text-muted);
-    }
-
-    .sentence-select {
-      flex: 1;
-      min-width: 200px;
-      padding: 8px 12px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background: white;
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--text);
+    .tab-btn {
+      border: none;
+      background: #f1f5f9;
+      color: #64748b;
+      font-family: inherit;
+      font-size: 14.5px;
+      font-weight: 800;
+      padding: 7px 18px;
+      border-radius: 999px;
       cursor: pointer;
-      outline: none;
+      transition: all 0.2s ease;
     }
 
-    .btn-action {
-      background: white;
-      border: 1px solid var(--border);
-      padding: 8px 12px;
-      border-radius: 10px;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text);
+    .tab-btn.active {
+      background: #2563eb;
+      color: #ffffff;
+      box-shadow: 0 3px 8px rgba(37, 99, 235, 0.35);
+    }
+
+    /* Tabs Content Container */
+    .tab-content {
+      flex: 1;
+      width: 100%;
+      height: calc(100vh - 48px);
+      position: relative;
+      display: none;
+    }
+
+    .tab-content.active {
+      display: flex;
+    }
+
+    /* ========================================================
+       TAB 1: PREGUNTAS (Original Sketch Structure)
+       ======================================================== */
+    .preguntas-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      padding: 2vh 3vw 2vh 3vw;
+    }
+
+    .columns-grid {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-evenly;
+      align-items: center;
+      width: 100%;
+      flex: 1;
+      gap: 3vw;
+      max-width: 1200px;
+    }
+
+    .column-item {
+      flex: 1;
+      height: 82%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2vh;
+    }
+
+    .arrow-icon {
+      width: 7vw;
+      max-width: 58px;
+      height: 6vh;
+      max-height: 52px;
+      fill: #2d3748;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.12));
+    }
+
+    .action-btn {
+      width: 100%;
+      height: 55%;
+      min-height: 80px;
+      border: none;
+      border-radius: 20px;
+      font-family: inherit;
+      font-size: clamp(1.4rem, 4.2vw, 2.4rem);
+      font-weight: 900;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 4px;
-      transition: all 0.15s ease;
+      justify-content: center;
+      text-align: center;
+      padding: 10px 15px;
+      transition: all 0.1s ease;
+      touch-action: manipulation;
     }
 
-    .btn-action:hover {
+    /* Button 1: ¿Quién? (Amarillo) */
+    .btn-yellow {
+      background: #ffd028;
+      color: #382d00;
+      box-shadow: 0 6px 0 #d4a708, 0 10px 16px rgba(212, 167, 8, 0.35);
+    }
+    .btn-yellow:active {
+      transform: translateY(6px);
+      box-shadow: 0 0 0 #d4a708, 0 4px 8px rgba(212, 167, 8, 0.25);
+    }
+
+    /* Button 2: ¿Qué hace? (Verde) */
+    .btn-green {
+      background: #2ec486;
+      color: #ffffff;
+      box-shadow: 0 6px 0 #1f9463, 0 10px 16px rgba(46, 196, 134, 0.35);
+    }
+    .btn-green:active {
+      transform: translateY(6px);
+      box-shadow: 0 0 0 #1f9463, 0 4px 8px rgba(46, 196, 134, 0.25);
+    }
+
+    /* Button 3: ¿Qué? (Morado) */
+    .btn-purple {
+      background: #8b5cf6;
+      color: #ffffff;
+      box-shadow: 0 6px 0 #6b3ec4, 0 10px 16px rgba(139, 92, 246, 0.35);
+    }
+    .btn-purple:active {
+      transform: translateY(6px);
+      box-shadow: 0 0 0 #6b3ec4, 0 4px 8px rgba(139, 92, 246, 0.25);
+    }
+
+    /* ========================================================
+       SHARED CIRCULAR BUTTONS & SCROLL VIEW (ORACIONES & PROTO2)
+       ======================================================== */
+    .oraciones-scroll-view {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      scroll-behavior: smooth;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .oraciones-main-screen {
+      width: 100%;
+      height: 100%;
+      min-height: calc(100vh - 48px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      padding: 2vh 2.5vw 2vh 2.5vw;
+      flex-shrink: 0;
+    }
+
+    .circles-grid {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-evenly;
+      align-items: center;
+      width: 100%;
+      flex: 1;
+      gap: 2.2vw;
+      max-width: 1200px;
+    }
+
+    .circle-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* 4-circle sizing */
+    .circle-btn {
+      width: min(20vw, 150px);
+      height: min(20vw, 150px);
+      border-radius: 50%;
+      border: none;
+      font-family: inherit;
+      font-size: clamp(1.1rem, 3.2vw, 1.9rem);
+      font-weight: 900;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 10px;
+      transition: all 0.1s ease;
+      touch-action: manipulation;
+      word-break: break-word;
+      line-height: 1.15;
+    }
+
+    /* 5-circle sizing for Proto2 */
+    .circles-grid-5 {
+      gap: 1.6vw;
+      max-width: 1280px;
+    }
+
+    .circle-btn-5 {
+      width: min(15.5vw, 118px);
+      height: min(15.5vw, 118px);
+      font-size: clamp(0.95rem, 2.4vw, 1.45rem);
+      padding: 6px;
+    }
+
+    /* Circle Color Types */
+    .circle-yellow {
+      background: #ffd028;
+      color: #382d00;
+      box-shadow: 0 6px 0 #d4a708, 0 10px 18px rgba(212, 167, 8, 0.35);
+    }
+    .circle-yellow:active {
+      transform: translateY(6px);
+      box-shadow: 0 0 0 #d4a708, 0 4px 8px rgba(212, 167, 8, 0.25);
+    }
+
+    .circle-green {
+      background: #2ec486;
+      color: #ffffff;
+      box-shadow: 0 6px 0 #1f9463, 0 10px 18px rgba(46, 196, 134, 0.35);
+    }
+    .circle-green:active {
+      transform: translateY(6px);
+      box-shadow: 0 0 0 #1f9463, 0 4px 8px rgba(46, 196, 134, 0.25);
+    }
+
+    .circle-cyan {
+      background: #38bdf8;
+      color: #ffffff;
+      box-shadow: 0 6px 0 #0284c7, 0 10px 18px rgba(56, 189, 248, 0.35);
+    }
+    .circle-cyan:active {
+      transform: translateY(6px);
+      box-shadow: 0 0 0 #0284c7, 0 4px 8px rgba(56, 189, 248, 0.25);
+    }
+
+    .circle-purple {
+      background: #8b5cf6;
+      color: #ffffff;
+      box-shadow: 0 6px 0 #6b3ec4, 0 10px 18px rgba(139, 92, 246, 0.35);
+    }
+    .circle-purple:active {
+      transform: translateY(6px);
+      box-shadow: 0 0 0 #6b3ec4, 0 4px 8px rgba(139, 92, 246, 0.25);
+    }
+
+    /* Hidden Selector Section */
+    .sentence-selector-section {
+      width: 100%;
+      min-height: 80vh;
+      background: #ffffff;
+      border-top: 2px dashed #cbd5e1;
+      padding: 40px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 16px;
+    }
+
+    .selector-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #475569;
+      text-align: center;
+    }
+
+    .sentence-cards-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+      max-width: 540px;
+    }
+
+    .sentence-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      background: #f8fafc;
+      border: 2px solid #e2e8f0;
+      border-radius: 14px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #1e293b;
+      transition: all 0.2s ease;
+    }
+
+    .sentence-card:hover {
       background: #f1f5f9;
       border-color: #cbd5e1;
     }
 
-    .btn-action.btn-new {
+    .sentence-card.selected {
       background: #eff6ff;
-      color: var(--color-quien);
-      border-color: #bfdbfe;
+      border-color: #2563eb;
+      color: #1d4ed8;
+      box-shadow: 0 3px 10px rgba(37, 99, 235, 0.15);
     }
 
-    .btn-action.btn-new:hover {
-      background: #dbeafe;
+    .sentence-badge {
+      font-size: 0.8rem;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      color: #64748b;
     }
 
-    /* Panel de Estado / Feedback de Audio */
-    .status-indicator {
-      padding: 8px 24px;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text-muted);
-      text-align: center;
-      min-height: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
+    .sentence-card.selected .sentence-badge {
+      background: #2563eb;
+      color: #ffffff;
     }
 
-    .status-indicator.speaking {
-      color: var(--color-quien);
-    }
-
-    .pulse-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--text-muted);
-      transition: all 0.2s ease;
-    }
-
-    .status-indicator.speaking .pulse-dot {
-      background: #22c55e;
-      transform: scale(1.4);
-      animation: pulseAnim 0.8s infinite alternate;
-    }
-
-    @keyframes pulseAnim {
-      0% { transform: scale(1); opacity: 0.6; }
-      100% { transform: scale(1.6); opacity: 1; }
-    }
-
-    /* GRID PRINCIPAL: 3 COLUMNAS */
-    .columns-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-      padding: 16px 24px 24px;
-      flex: 1;
-    }
-
-    @media (max-width: 580px) {
-      .columns-grid {
-        grid-template-columns: 1fr;
-        gap: 20px;
-      }
-    }
-
-    .column-card {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    /* 1. Botón Superior de Pregunta */
-    .btn-question {
+    /* ========================================================
+       TAB 4: IMAGEN (Grey Box + Random Button, No Text)
+       ======================================================== */
+    .imagen-container {
       width: 100%;
-      height: 64px;
-      border-radius: var(--radius-sm);
-      border: none;
-      color: white;
-      font-size: 17px;
-      font-weight: 800;
-      letter-spacing: 0.5px;
-      cursor: pointer;
+      height: 100%;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      gap: 4vw;
+      padding: 2.5vh 4vw;
+    }
+
+    .image-display-box {
+      height: 78vh;
+      max-height: 330px;
+      aspect-ratio: 4 / 3;
+      background: #d8dde6;
+      border-radius: 20px;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      box-shadow: var(--shadow-sm);
-      transition: all 0.15s ease-out;
-      position: relative;
-    }
-
-    .btn-question:hover {
-      transform: translateY(-2px);
-      filter: brightness(1.08);
-      box-shadow: var(--shadow-md);
-    }
-
-    .btn-question:active, .btn-question.speaking {
-      transform: translateY(2px) scale(0.98);
-      filter: brightness(0.95);
-    }
-
-    .btn-quien { background: linear-gradient(135deg, #1d4ed8, #3b82f6); }
-    .btn-que-hace { background: linear-gradient(135deg, #6d28d9, #8b5cf6); }
-    .btn-que { background: linear-gradient(135deg, #be185d, #ec4899); }
-
-    /* 2. Tarjeta del Pictograma + Enunciado */
-    .picto-card {
-      background: white;
-      border-radius: var(--radius-sm);
-      border: 2px solid var(--border);
-      padding: 14px 10px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      position: relative;
-      box-shadow: var(--shadow-sm);
-    }
-
-    .column-quien .picto-card { border-color: #bfdbfe; background: var(--color-quien-bg); }
-    .column-que-hace .picto-card { border-color: #ddd6fe; background: var(--color-que-hace-bg); }
-    .column-que .picto-card { border-color: #fbcfe8; background: var(--color-que-bg); }
-
-    .picto-card:hover {
-      transform: translateY(-3px);
-      box-shadow: var(--shadow-md);
-    }
-
-    .picto-card:active, .picto-card.speaking {
-      transform: scale(0.97);
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.4);
-    }
-
-    /* Imagen del Pictograma */
-    .picto-img-wrapper {
-      width: 100%;
-      height: 120px;
-      background: white;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 8px;
-      border: 1px solid var(--border);
       overflow: hidden;
-      position: relative;
+      box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.08), 0 6px 16px rgba(0, 0, 0, 0.05);
+      transition: all 0.3s ease;
     }
 
-    .picto-img {
-      max-width: 100%;
-      max-height: 100%;
+    .image-display-box.has-image {
+      background: #ffffff;
+      border: 3px solid #e2e8f0;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    .image-display-box img {
+      width: 100%;
+      height: 100%;
       object-fit: contain;
-      transition: transform 0.2s ease;
+      border-radius: 17px;
+      opacity: 0;
+      transform: scale(0.96);
+      transition: opacity 0.25s ease, transform 0.25s ease;
     }
 
-    .picto-card:hover .picto-img {
-      transform: scale(1.05);
+    .image-display-box img.loaded {
+      opacity: 1;
+      transform: scale(1);
     }
 
-    .picto-spinner {
-      position: absolute;
-      font-size: 11px;
-      color: var(--text-muted);
-      display: none;
-    }
-
-    /* 3. Texto del Enunciado */
-    .statement-text {
-      font-size: 16px;
-      font-weight: 800;
-      color: var(--text);
-      line-height: 1.2;
-      min-height: 38px;
+    .btn-random-img {
+      width: 66px;
+      height: 66px;
+      border-radius: 50%;
+      border: none;
+      background: #2563eb;
+      color: #ffffff;
       display: flex;
       align-items: center;
       justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 6px 0 #1d4ed8, 0 10px 18px rgba(37, 99, 235, 0.35);
+      transition: all 0.1s ease;
+      touch-action: manipulation;
+      flex-shrink: 0;
     }
 
-    .picto-listen-hint {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-muted);
+    .btn-random-img:active {
+      transform: translateY(6px);
+      box-shadow: 0 0 0 #1d4ed8, 0 4px 8px rgba(37, 99, 235, 0.25);
+    }
+
+    .dice-icon {
+      width: 32px;
+      height: 32px;
+    }
+
+    /* Bottom Celebration Button */
+    .bottom-bar {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding-bottom: 0.5vh;
+    }
+
+    .btn-celebration {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: none;
+      background: #ff5e97;
+      color: #ffffff;
+      font-size: 26px;
+      font-weight: 900;
+      cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 3px;
+      justify-content: center;
+      box-shadow: 0 4px 0 #c7376b, 0 6px 14px rgba(255, 94, 151, 0.4);
+      transition: all 0.1s ease;
+      touch-action: manipulation;
     }
 
-    /* Modal para Agregar/Editar Oración */
-    .modal-overlay {
+    .btn-celebration:active {
+      transform: translateY(4px);
+      box-shadow: 0 0 0 #c7376b, 0 2px 6px rgba(255, 94, 151, 0.3);
+    }
+
+    @keyframes gentle-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.06); }
+    }
+    .btn-celebration:hover {
+      animation: gentle-pulse 1s infinite ease-in-out;
+    }
+
+    /* Confetti Canvas */
+    #confetti-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    /* Orientation overlay for portrait */
+    .orientation-overlay {
+      display: none;
       position: fixed;
       inset: 0;
-      background: rgba(15, 23, 42, 0.6);
-      backdrop-filter: blur(4px);
-      display: none;
-      align-items: center;
+      background: rgba(247, 249, 252, 0.98);
+      z-index: 1000;
+      flex-direction: column;
       justify-content: center;
-      padding: 20px;
-      z-index: 100;
-    }
-
-    .modal-overlay.open {
-      display: flex;
-    }
-
-    .modal-box {
-      background: white;
-      width: 100%;
-      max-width: 480px;
-      border-radius: 24px;
-      padding: 28px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-      border: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .modal-title {
-      font-size: 20px;
-      font-weight: 800;
-      color: var(--text);
-    }
-
-    .modal-desc {
-      font-size: 13px;
-      color: var(--text-muted);
-      line-height: 1.5;
-    }
-
-    .modal-input {
-      width: 100%;
-      padding: 12px 16px;
-      border-radius: 12px;
-      border: 2px solid var(--border);
-      font-size: 16px;
-      font-weight: 600;
-      outline: none;
-      color: var(--text);
-      transition: border-color 0.2s;
-    }
-
-    .modal-input:focus {
-      border-color: var(--color-quien);
-    }
-
-    .input-format-guide {
-      background: #f8fafc;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px;
-      font-size: 12px;
-      color: var(--text-muted);
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .input-format-guide strong {
-      color: var(--text);
-    }
-
-    .modal-buttons {
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-      margin-top: 8px;
-    }
-
-    .btn-modal {
-      padding: 10px 18px;
-      border-radius: 10px;
-      font-size: 14px;
-      font-weight: 700;
-      cursor: pointer;
-      border: none;
-    }
-
-    .btn-cancel {
-      background: #f1f5f9;
-      color: var(--text-muted);
-    }
-
-    .btn-save {
-      background: var(--color-quien);
-      color: white;
-    }
-
-    /* Panel de Configuración Inferior */
-    .footer-settings {
-      background: #f8fafc;
-      border-top: 1px solid var(--border);
-      padding: 14px 24px;
-    }
-
-    .settings-accordion-header {
-      width: 100%;
-      background: none;
-      border: none;
-      display: flex;
-      justify-content: space-between;
       align-items: center;
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text-muted);
-      cursor: pointer;
+      text-align: center;
+      padding: 24px;
+      color: #2d3748;
     }
 
-    .settings-body {
-      display: none;
-      margin-top: 14px;
-      flex-direction: column;
-      gap: 12px;
+    .orientation-overlay svg {
+      width: 56px;
+      height: 56px;
+      margin-bottom: 16px;
+      animation: rotate-phone 2s infinite ease-in-out;
     }
 
-    .settings-body.open {
-      display: flex;
+    @keyframes rotate-phone {
+      0%, 15% { transform: rotate(0deg); }
+      50%, 85% { transform: rotate(90deg); }
+      100% { transform: rotate(90deg); }
     }
 
-    .setting-row {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .setting-row label {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text-muted);
-      display: flex;
-      justify-content: space-between;
-    }
-
-    .setting-row select, .setting-row input[type="range"] {
-      width: 100%;
-      accent-color: var(--color-quien);
-    }
-
-    .setting-row select {
-      padding: 8px 10px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: white;
-      font-size: 13px;
+    @media (orientation: portrait) and (max-width: 768px) {
+      .orientation-overlay {
+        display: flex;
+      }
     }
   </style>
 </head>
 <body>
 
-  <!-- Mockup / Dispositivo Interactivo -->
-  <div class="device-frame">
-    
-    <!-- Header -->
-    <header class="header">
-      <div class="header-top">
-        <span class="badge">Prototipo Interactivo CAA</span>
-        <div class="arasaac-credit">
-          Pictogramas: <a href="https://arasaac.org" target="_blank" rel="noopener">ARASAAC</a>
-        </div>
-      </div>
+  <!-- Fullscreen celebration canvas for visual feedback -->
+  <canvas id="confetti-canvas"></canvas>
 
-      <!-- Barra de la Oración Actual -->
-      <div class="sentence-bar">
-        <div class="sentence-display">
-          <span class="sentence-chip chip-quien" id="chip-quien">La niña</span>
-          <span>+</span>
-          <span class="sentence-chip chip-que-hace" id="chip-que-hace">come</span>
-          <span>+</span>
-          <span class="sentence-chip chip-que" id="chip-que">una manzana</span>
-        </div>
-        <button class="sentence-play-btn" onclick="reproducirOracionCompleta()">
-          <span>▶</span> Escuchar todo
-        </button>
-      </div>
-    </header>
-
-    <!-- Barra de Selección y Gestión de Oraciones -->
-    <div class="controls-bar">
-      <span class="select-sentence-label">Oración:</span>
-      <select id="sentence-select" class="sentence-select" onchange="seleccionarOracion(this.value)">
-        <!-- Llenado dinámicamente con JS -->
-      </select>
-
-      <button class="btn-action btn-new" onclick="abrirModalNuevaOracion()">
-        <span>➕</span> Nueva oración
-      </button>
-
-      <button class="btn-action" title="Eliminar oración actual" onclick="eliminarOracionActual()">
-        <span>🗑️</span>
-      </button>
-    </div>
-
-    <!-- Indicador de Estado de Voz -->
-    <div id="status-indicator" class="status-indicator">
-      <div class="pulse-dot"></div>
-      <span id="status-label">Toca un botón o pictograma para escuchar</span>
-    </div>
-
-    <!-- Las 3 Columnas Principales -->
-    <main class="columns-grid">
-      
-      <!-- COLUMNA 1: ¿QUIÉN? (Sujeto) -->
-      <section class="column-card column-quien">
-        <button class="btn-question btn-quien" id="btn-q1" onclick="hablarPregunta('¿Quién?', this)">
-          <span>¿QUIÉN?</span>
-          <span>🔊</span>
-        </button>
-
-        <div class="picto-card" id="card-1" onclick="hablarEnunciado(oracionActual.partes[0], this)">
-          <div class="picto-img-wrapper">
-            <span class="picto-spinner" id="spinner-1">Cargando...</span>
-            <img id="img-1" class="picto-img" src="" alt="Pictograma ¿Quién?">
-          </div>
-          <div class="statement-text" id="text-1">La niña</div>
-          <div class="picto-listen-hint">🔊 Toca para escuchar</div>
-        </div>
-      </section>
-
-      <!-- COLUMNA 2: ¿QUÉ HACE? (Acción / Verbo) -->
-      <section class="column-card column-que-hace">
-        <button class="btn-question btn-que-hace" id="btn-q2" onclick="hablarPregunta('¿Qué hace?', this)">
-          <span>¿QUÉ HACE?</span>
-          <span>🔊</span>
-        </button>
-
-        <div class="picto-card" id="card-2" onclick="hablarEnunciado(oracionActual.partes[1], this)">
-          <div class="picto-img-wrapper">
-            <span class="picto-spinner" id="spinner-2">Cargando...</span>
-            <img id="img-2" class="picto-img" src="" alt="Pictograma ¿Qué hace?">
-          </div>
-          <div class="statement-text" id="text-2">come</div>
-          <div class="picto-listen-hint">🔊 Toca para escuchar</div>
-        </div>
-      </section>
-
-      <!-- COLUMNA 3: ¿QUÉ? (Objeto) -->
-      <section class="column-card column-que">
-        <button class="btn-question btn-que" id="btn-q3" onclick="hablarPregunta('¿Qué?', this)">
-          <span>¿QUÉ?</span>
-          <span>🔊</span>
-        </button>
-
-        <div class="picto-card" id="card-3" onclick="hablarEnunciado(oracionActual.partes[2], this)">
-          <div class="picto-img-wrapper">
-            <span class="picto-spinner" id="spinner-3">Cargando...</span>
-            <img id="img-3" class="picto-img" src="" alt="Pictograma ¿Qué?">
-          </div>
-          <div class="statement-text" id="text-3">una manzana</div>
-          <div class="picto-listen-hint">🔊 Toca para escuchar</div>
-        </div>
-      </section>
-
-    </main>
-
-    <!-- Footer: Ajustes de Voz -->
-    <footer class="footer-settings">
-      <button class="settings-accordion-header" onclick="toggleAjustes()">
-        <span>⚙️ Configuración de voz y audio</span>
-        <span id="accordion-arrow">▼</span>
-      </button>
-
-      <div class="settings-body" id="settings-body">
-        <div class="setting-row">
-          <label for="voice-select">Voz en español detectada:</label>
-          <select id="voice-select" onchange="cambiarVoz()"></select>
-        </div>
-
-        <div class="setting-row">
-          <label for="rate-range">
-            <span>Velocidad de habla:</span>
-            <span id="rate-val">1.0x</span>
-          </label>
-          <input type="range" id="rate-range" min="0.5" max="1.4" step="0.1" value="1.0" oninput="actualizarVelocidad(this.value)">
-        </div>
-
-        <div class="setting-row">
-          <label for="pitch-range">
-            <span>Tono (Grave / Agudo):</span>
-            <span id="pitch-val">1.0</span>
-          </label>
-          <input type="range" id="pitch-range" min="0.6" max="1.4" step="0.1" value="1.0" oninput="actualizarTono(this.value)">
-        </div>
-      </div>
-    </footer>
-
+  <!-- Portrait reminder to rotate phone horizontally -->
+  <div class="orientation-overlay">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+      <line x1="12" y1="18" x2="12.01" y2="18"></line>
+    </svg>
+    <h2 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 8px;">Gira tu pantalla en horizontal</h2>
+    <p style="font-size: 0.95rem; color: #718096;">Diseñado para usarse con el celular acostado.</p>
   </div>
 
-  <!-- MODAL: Crear Nueva Oración -->
-  <div class="modal-overlay" id="modal-nueva">
-    <div class="modal-box">
-      <h2 class="modal-title">Agregar nueva oración</h2>
-      <p class="modal-desc">
-        Escribe las 3 partes separadas con un guión <code>-</code>. El sistema buscará automáticamente los pictogramas correspondientes en la biblioteca oficial de ARASAAC.
-      </p>
+  <div class="app-wrapper">
+    <!-- Top Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="tab-btn active" id="tab-btn-preguntas" onclick="switchTab('preguntas')">Preguntas</button>
+      <button class="tab-btn" id="tab-btn-oraciones" onclick="switchTab('oraciones')">Oraciones</button>
+      <button class="tab-btn" id="tab-btn-proto2" onclick="switchTab('proto2')">Proto2</button>
+      <button class="tab-btn" id="tab-btn-imagen" onclick="switchTab('imagen')">Imagen</button>
+    </nav>
 
-      <input 
-        type="text" 
-        id="input-oracion" 
-        class="modal-input" 
-        placeholder="Ej: El perro - corre - la pelota"
-        onkeydown="if(event.key === 'Enter') guardarNuevaOracion()"
-      >
+    <!-- TAB 1: PREGUNTAS -->
+    <section class="tab-content active" id="tab-preguntas">
+      <div class="preguntas-container">
+        <div class="columns-grid">
+          <!-- Columna 1: ¿Quién? -->
+          <div class="column-item">
+            <svg class="arrow-icon" viewBox="0 0 24 24">
+              <path d="M12 2L4 11h5v11h6V11h5L12 2z"/>
+            </svg>
+            <button class="action-btn btn-yellow" onclick="sayWord('¿Quién?')">
+              ¿Quién?
+            </button>
+          </div>
 
-      <div class="input-format-guide">
-        <span><strong>Estructura requerida:</strong> [¿Quién?] - [¿Qué hace?] - [¿Qué?]</span>
-        <span>• <em>Ejemplo 1:</em> La niña - come - una manzana</span>
-        <span>• <em>Ejemplo 2:</em> El niño - toma - agua</span>
-        <span>• <em>Ejemplo 3:</em> Mamá - lee - un cuento</span>
+          <!-- Columna 2: ¿Qué hace? -->
+          <div class="column-item">
+            <svg class="arrow-icon" viewBox="0 0 24 24">
+              <path d="M12 2L4 11h5v11h6V11h5L12 2z"/>
+            </svg>
+            <button class="action-btn btn-green" onclick="sayWord('¿Qué hace?')">
+              ¿Qué hace?
+            </button>
+          </div>
+
+          <!-- Columna 3: ¿Qué? -->
+          <div class="column-item">
+            <svg class="arrow-icon" viewBox="0 0 24 24">
+              <path d="M12 2L4 11h5v11h6V11h5L12 2z"/>
+            </svg>
+            <button class="action-btn btn-purple" onclick="sayWord('¿Qué?')">
+              ¿Qué?
+            </button>
+          </div>
+        </div>
+
+        <div class="bottom-bar">
+          <button class="btn-celebration" onclick="celebrate()" title="¡Celebración!">!</button>
+        </div>
       </div>
+    </section>
 
-      <div class="modal-buttons">
-        <button class="btn-modal btn-cancel" onclick="cerrarModalNuevaOracion()">Cancelar</button>
-        <button class="btn-modal btn-save" onclick="guardarNuevaOracion()">Guardar y Buscar Pictogramas</button>
+    <!-- TAB 2: ORACIONES (4 words) -->
+    <section class="tab-content" id="tab-oraciones">
+      <div class="oraciones-scroll-view" id="oraciones-scroll">
+        <!-- Main screen view: 4 circles + celebration button -->
+        <div class="oraciones-main-screen">
+          <div class="circles-grid">
+            
+            <!-- 1. Sujeto (Amarillo) -->
+            <div class="circle-wrapper">
+              <button class="circle-btn circle-yellow" id="btn-sujeto" onclick="sayCurrentWord(0)">
+                Papá
+              </button>
+            </div>
+
+            <!-- 2. Verbo (Verde) -->
+            <div class="circle-wrapper">
+              <button class="circle-btn circle-green" id="btn-verbo" onclick="sayCurrentWord(1)">
+                riega
+              </button>
+            </div>
+
+            <!-- 3. Artículo (Celeste) -->
+            <div class="circle-wrapper">
+              <button class="circle-btn circle-cyan" id="btn-articulo" onclick="sayCurrentWord(2)">
+                las
+              </button>
+            </div>
+
+            <!-- 4. Complemento (Morado) -->
+            <div class="circle-wrapper">
+              <button class="circle-btn circle-purple" id="btn-complemento" onclick="sayCurrentWord(3)">
+                plantas
+              </button>
+            </div>
+
+          </div>
+
+          <div class="bottom-bar">
+            <button class="btn-celebration" onclick="celebrate()" title="¡Celebración!">!</button>
+          </div>
+        </div>
+
+        <!-- Hidden below the fold: Sentence Selector List -->
+        <div class="sentence-selector-section">
+          <p class="selector-title">Seleccionar oración para los botones:</p>
+          <div class="sentence-cards-list">
+            <div class="sentence-card selected" id="card-s0" onclick="selectSentence(0)">
+              <span>Papá riega las plantas</span>
+              <span class="sentence-badge">Activa</span>
+            </div>
+            <div class="sentence-card" id="card-s1" onclick="selectSentence(1)">
+              <span>Mamá lee un libro</span>
+              <span class="sentence-badge">Elegir</span>
+            </div>
+            <div class="sentence-card" id="card-s2" onclick="selectSentence(2)">
+              <span>Abuela hornea un pastel</span>
+              <span class="sentence-badge">Elegir</span>
+            </div>
+          </div>
+        </div>
+
       </div>
-    </div>
+    </section>
+
+    <!-- TAB 3: PROTO2 (5 words: Artículo + Sujeto + Verbo + Artículo + Complemento) -->
+    <section class="tab-content" id="tab-proto2">
+      <div class="oraciones-scroll-view" id="proto2-scroll">
+        <!-- Main screen view: 5 circles + celebration button -->
+        <div class="oraciones-main-screen">
+          <div class="circles-grid circles-grid-5">
+            
+            <!-- 1. Artículo (Celeste) -->
+            <div class="circle-wrapper">
+              <button class="circle-btn circle-btn-5 circle-cyan" id="btn-p2-art1" onclick="sayCurrentWordProto2(0)">
+                El
+              </button>
+            </div>
+
+            <!-- 2. Sujeto (Amarillo) -->
+            <div class="circle-wrapper">
+              <button class="circle-btn circle-btn-5 circle-yellow" id="btn-p2-suj" onclick="sayCurrentWordProto2(1)">
+                abuelo
+              </button>
+            </div>
+
+            <!-- 3. Verbo (Verde) -->
+            <div class="circle-wrapper">
+              <button class="circle-btn circle-btn-5 circle-green" id="btn-p2-vrb" onclick="sayCurrentWordProto2(2)">
+                abraza
+              </button>
+            </div>
+
+            <!-- 4. Artículo (Celeste) -->
+            <div class="circle-wrapper">
+              <button class="circle-btn circle-btn-5 circle-cyan" id="btn-p2-art2" onclick="sayCurrentWordProto2(3)">
+                al
+              </button>
+            </div>
+
+            <!-- 5. Complemento (Morado) -->
+            <div class="circle-wrapper">
+              <button class="circle-btn circle-btn-5 circle-purple" id="btn-p2-comp" onclick="sayCurrentWordProto2(4)">
+                perro
+              </button>
+            </div>
+
+          </div>
+
+          <div class="bottom-bar">
+            <button class="btn-celebration" onclick="celebrate()" title="¡Celebración!">!</button>
+          </div>
+        </div>
+
+        <!-- Hidden below the fold: Proto2 Selector List -->
+        <div class="sentence-selector-section">
+          <p class="selector-title">Seleccionar oración para los botones (5 palabras):</p>
+          <div class="sentence-cards-list">
+            <div class="sentence-card selected" id="card-p2-0" onclick="selectSentenceProto2(0)">
+              <span>El abuelo abraza al perro</span>
+              <span class="sentence-badge">Activa</span>
+            </div>
+            <div class="sentence-card" id="card-p2-1" onclick="selectSentenceProto2(1)">
+              <span>La chica lava los platos</span>
+              <span class="sentence-badge">Elegir</span>
+            </div>
+            <div class="sentence-card" id="card-p2-2" onclick="selectSentenceProto2(2)">
+              <span>El niño duerme en la noche</span>
+              <span class="sentence-badge">Elegir</span>
+            </div>
+            <div class="sentence-card" id="card-p2-3" onclick="selectSentenceProto2(3)">
+              <span>La niña come una sopa</span>
+              <span class="sentence-badge">Elegir</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 4: IMAGEN -->
+    <section class="tab-content" id="tab-imagen">
+      <div class="imagen-container">
+        <!-- Initially a grey rectangle, becomes the image on button press -->
+        <div class="image-display-box" id="image-box">
+          <img id="random-image" src="" alt="" style="display: none;">
+        </div>
+
+        <!-- Simple button with dice icon and NO text -->
+        <button class="btn-random-img" id="btn-shuffle" onclick="showRandomImage()" aria-label="Aleatorio">
+          <svg viewBox="0 0 24 24" class="dice-icon">
+            <rect x="3" y="3" width="18" height="18" rx="4" ry="4" fill="none" stroke="currentColor" stroke-width="2.2"/>
+            <circle cx="8" cy="8" r="1.6" fill="currentColor"/>
+            <circle cx="16" cy="8" r="1.6" fill="currentColor"/>
+            <circle cx="12" cy="12" r="1.6" fill="currentColor"/>
+            <circle cx="8" cy="16" r="1.6" fill="currentColor"/>
+            <circle cx="16" cy="16" r="1.6" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+    </section>
+
   </div>
 
   <script>
-    // ========================================================
-    // 1. BANCO DE ORACIONES INICIALES Y ALMACENAMIENTO (LOCALSTORAGE)
-    // ========================================================
-
-    const ORACIONES_POR_DEFECTO = [
+    // ==========================================
+    // PROTO2 TAB LOGIC (5 words: Art + Suj + Vrb + Art + Comp)
+    // ==========================================
+    const proto2Sentences = [
       {
-        texto: "La niña - come - una manzana",
-        partes: ["La niña", "come", "una manzana"],
-        pictoKeywords: ["niña", "comer", "manzana"]
+        text: 'El abuelo abraza al perro',
+        words: ['El', 'abuelo', 'abraza', 'al', 'perro']
       },
       {
-        texto: "El perro - corre - la pelota",
-        partes: ["El perro", "corre", "la pelota"],
-        pictoKeywords: ["perro", "correr", "pelota"]
+        text: 'La chica lava los platos',
+        words: ['La', 'chica', 'lava', 'los', 'platos']
       },
       {
-        texto: "El niño - toma - agua",
-        partes: ["El niño", "toma", "agua"],
-        pictoKeywords: ["niño", "beber", "agua"]
+        text: 'El niño duerme en la noche',
+        words: ['El', 'niño', 'duerme', 'en la', 'noche']
       },
       {
-        texto: "El gato - duerme - en la cama",
-        partes: ["El gato", "duerme", "la cama"],
-        pictoKeywords: ["gato", "dormir", "cama"]
-      },
-      {
-        texto: "Mamá - lee - un libro",
-        partes: ["Mamá", "lee", "un libro"],
-        pictoKeywords: ["madre", "leer", "libro"]
+        text: 'La niña come una sopa',
+        words: ['La', 'niña', 'come', 'una', 'sopa']
       }
     ];
 
-    let oraciones = [];
-    let indiceActual = 0;
-    let oracionActual = null;
+    let currentProto2Index = 0;
 
-    // Cargar oraciones desde localStorage si existen
-    function inicializarOraciones() {
-      const guardadas = localStorage.getItem('arasaac_oraciones');
-      if (guardadas) {
-        try {
-          oraciones = JSON.parse(guardadas);
-        } catch (e) {
-          oraciones = [...ORACIONES_POR_DEFECTO];
+    function selectSentenceProto2(index) {
+      currentProto2Index = index;
+      const current = proto2Sentences[index];
+
+      // Update text in the 5 circles
+      document.getElementById('btn-p2-art1').textContent = current.words[0];
+      document.getElementById('btn-p2-suj').textContent = current.words[1];
+      document.getElementById('btn-p2-vrb').textContent = current.words[2];
+      document.getElementById('btn-p2-art2').textContent = current.words[3];
+      document.getElementById('btn-p2-comp').textContent = current.words[4];
+
+      // Update UI cards
+      proto2Sentences.forEach((_, i) => {
+        const card = document.getElementById(`card-p2-${i}`);
+        const badge = card.querySelector('.sentence-badge');
+        if (i === index) {
+          card.classList.add('selected');
+          badge.textContent = 'Activa';
+        } else {
+          card.classList.remove('selected');
+          badge.textContent = 'Elegir';
         }
-      } else {
-        oraciones = [...ORACIONES_POR_DEFECTO];
-        guardarEnStorage();
-      }
-      poblarSelectorOraciones();
-      cargarOracion(0);
-    }
-
-    function guardarEnStorage() {
-      localStorage.setItem('arasaac_oraciones', JSON.stringify(oraciones));
-    }
-
-    function poblarSelectorOraciones() {
-      const select = document.getElementById('sentence-select');
-      select.innerHTML = '';
-      oraciones.forEach((o, idx) => {
-        const opt = document.createElement('option');
-        opt.value = idx;
-        opt.textContent = `${idx + 1}. ${o.partes.join(' + ')}`;
-        select.appendChild(opt);
       });
-      select.value = indiceActual;
-    }
 
-    function seleccionarOracion(index) {
-      cargarOracion(parseInt(index, 10));
-    }
-
-    // ========================================================
-    // 2. BUSCADOR INTELIGENTE EN ARASAAC API
-    // ========================================================
-
-    // Palabras vacías en español para extraer el núcleo sustantivo
-    const STOP_WORDS = ['el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'al', 'del', 'a', 'de', 'en', 'con', 'por', 'para'];
-
-    // Mapeo básico de verbos conjugados a infinitivos para optimizar búsqueda en ARASAAC
-    const DICCIONARIO_VERBOS = {
-      'come': 'comer', 'comiendo': 'comer', 'comió': 'comer', 'comen': 'comer',
-      'toma': 'beber', 'bebe': 'beber', 'tomando': 'beber', 'bebiendo': 'beber',
-      'corre': 'correr', 'corriendo': 'correr', 'corrió': 'correr', 'corren': 'correr',
-      'duerme': 'dormir', 'durmiendo': 'dormir', 'duermen': 'dormir',
-      'juega': 'jugar', 'jugando': 'jugar', 'juegan': 'jugar',
-      'lee': 'leer', 'leyendo': 'leer', 'leen': 'leer',
-      'salta': 'saltar', 'saltando': 'saltar', 'salten': 'saltar',
-      'baila': 'bailar', 'bailando': 'bailar',
-      'canta': 'cantar', 'cantando': 'cantar',
-      'dibuja': 'dibujar', 'dibujando': 'dibujar',
-      'pinta': 'pintar', 'pintando': 'pintar',
-      'escribe': 'escribir', 'escribiendo': 'escribir',
-      'lava': 'lavar', 'lavando': 'lavar',
-      'mira': 'mirar', 'mirando': 'mirar',
-      'escucha': 'escuchar', 'oye': 'escuchar',
-      'cocina': 'cocinar', 'cocinando': 'cocinar',
-      'mama': 'madre', 'mamá': 'madre', 'papa': 'padre', 'papá': 'padre'
-    };
-
-    function limpiarPalabraClave(frase) {
-      if (!frase) return 'objeto';
-      const limpia = frase.toLowerCase().replace(/[¿?¡!.,;:]/g, '').trim();
-      const palabras = limpia.split(/\s+/).filter(w => !STOP_WORDS.includes(w));
-      let palabra = palabras.length > 0 ? palabras[0] : limpia.split(/\s+/)[0];
-
-      if (DICCIONARIO_VERBOS[palabra]) {
-        return DICCIONARIO_VERBOS[palabra];
+      // Scroll back up to the buttons view seamlessly
+      const scrollView = document.getElementById('proto2-scroll');
+      if (scrollView) {
+        scrollView.scrollTo({ top: 0, behavior: 'smooth' });
       }
-      return palabra;
+
+      sayWord(current.text);
     }
 
-    // Busca un pictograma en la API oficial de ARASAAC
-    async function buscarPictogramaArasaac(palabraClave) {
-      try {
-        const query = encodeURIComponent(palabraClave);
-        // Intentar primero con bestsearch (los resultados más idóneos)
-        let response = await fetch(`https://api.arasaac.org/api/pictograms/es/bestsearch/${query}`);
-        
-        if (!response.ok) {
-          // Si falla, probar búsqueda general
-          response = await fetch(`https://api.arasaac.org/api/pictograms/es/search/${query}`);
+    function sayCurrentWordProto2(wordIndex) {
+      const current = proto2Sentences[currentProto2Index];
+      if (current && current.words[wordIndex]) {
+        sayWord(current.words[wordIndex]);
+      }
+    }
+
+    // ==========================================
+    // ORACIONES TAB LOGIC (4 words)
+    // ==========================================
+    const sentences = [
+      {
+        text: 'Papá riega las plantas',
+        words: ['Papá', 'riega', 'las', 'plantas']
+      },
+      {
+        text: 'Mamá lee un libro',
+        words: ['Mamá', 'lee', 'un', 'libro']
+      },
+      {
+        text: 'Abuela hornea un pastel',
+        words: ['Abuela', 'hornea', 'un', 'pastel']
+      }
+    ];
+
+    let currentSentenceIndex = 0;
+
+    function selectSentence(index) {
+      currentSentenceIndex = index;
+      const current = sentences[index];
+
+      // Update text in the 4 circles
+      document.getElementById('btn-sujeto').textContent = current.words[0];
+      document.getElementById('btn-verbo').textContent = current.words[1];
+      document.getElementById('btn-articulo').textContent = current.words[2];
+      document.getElementById('btn-complemento').textContent = current.words[3];
+
+      // Update UI cards
+      sentences.forEach((_, i) => {
+        const card = document.getElementById(`card-s${i}`);
+        const badge = card.querySelector('.sentence-badge');
+        if (i === index) {
+          card.classList.add('selected');
+          badge.textContent = 'Activa';
+        } else {
+          card.classList.remove('selected');
+          badge.textContent = 'Elegir';
         }
+      });
 
-        if (response.ok) {
-          const data = await response.json();
-          if (Array.isArray(data) && data.length > 0) {
-            const pictoId = data[0]._id;
-            return `https://static.arasaac.org/pictograms/${pictoId}/${pictoId}_500.png`;
-          }
-        }
-      } catch (err) {
-        console.warn(`No se pudo cargar de ARASAAC para '${palabraClave}':`, err);
+      // Scroll back up to the buttons view seamlessly
+      const scrollView = document.getElementById('oraciones-scroll');
+      if (scrollView) {
+        scrollView.scrollTo({ top: 0, behavior: 'smooth' });
       }
-      // Imagen placeholder fallback si no se encuentra
-      return `https://via.placeholder.com/300x300/f1f5f9/475569?text=${encodeURIComponent(palabraClave.toUpperCase())}`;
+
+      sayWord(current.text);
     }
 
-    // Cargar la oración activa en la interfaz y consultar los 3 pictogramas
-    async function cargarOracion(index) {
-      if (index < 0 || index >= oraciones.length) return;
-      indiceActual = index;
-      oracionActual = oraciones[index];
-
-      document.getElementById('sentence-select').value = index;
-
-      // Actualizar chips del encabezado
-      document.getElementById('chip-quien').textContent = oracionActual.partes[0];
-      document.getElementById('chip-que-hace').textContent = oracionActual.partes[1];
-      document.getElementById('chip-que').textContent = oracionActual.partes[2];
-
-      // Actualizar textos bajo los botones
-      document.getElementById('text-1').textContent = oracionActual.partes[0];
-      document.getElementById('text-2').textContent = oracionActual.partes[1];
-      document.getElementById('text-3').textContent = oracionActual.partes[2];
-
-      // Actualizar pictogramas
-      for (let i = 0; i < 3; i++) {
-        const imgEl = document.getElementById(`img-${i + 1}`);
-        const spinner = document.getElementById(`spinner-${i + 1}`);
-        spinner.style.display = 'block';
-        imgEl.style.opacity = '0.3';
-
-        // Obtener la palabra clave de búsqueda
-        const palabra = (oracionActual.pictoKeywords && oracionActual.pictoKeywords[i]) 
-          ? oracionActual.pictoKeywords[i] 
-          : limpiarPalabraClave(oracionActual.partes[i]);
-
-        const urlImg = await buscarPictogramaArasaac(palabra);
-        imgEl.src = urlImg;
-        imgEl.onload = () => {
-          spinner.style.display = 'none';
-          imgEl.style.opacity = '1';
-        };
+    function sayCurrentWord(wordIndex) {
+      const current = sentences[currentSentenceIndex];
+      if (current && current.words[wordIndex]) {
+        sayWord(current.words[wordIndex]);
       }
     }
 
-    // ========================================================
-    // 3. AGREGAR Y ELIMINAR ORACIONES
-    // ========================================================
+    // ==========================================
+    // IMAGEN TAB LOGIC
+    // ==========================================
+    const imageList = [
+      'img/img1.png', // Papá riega las plantas
+      'img/img2.png', // Mamá lee un libro
+      'img/img3.jpg'  // Abuela hornea un pastel
+    ];
+    let lastImageIndex = -1;
 
-    function abrirModalNuevaOracion() {
-      const modal = document.getElementById('modal-nueva');
-      const input = document.getElementById('input-oracion');
-      input.value = '';
-      modal.classList.add('open');
-      input.focus();
-    }
-
-    function cerrarModalNuevaOracion() {
-      document.getElementById('modal-nueva').classList.remove('open');
-    }
-
-    async function guardarNuevaOracion() {
-      const input = document.getElementById('input-oracion');
-      const valor = input.value.trim();
-
-      if (!valor) {
-        alert("Por favor escribe una oración.");
-        return;
+    function showRandomImage() {
+      let newIndex;
+      if (imageList.length > 1) {
+        do {
+          newIndex = Math.floor(Math.random() * imageList.length);
+        } while (newIndex === lastImageIndex);
+      } else {
+        newIndex = 0;
       }
+      lastImageIndex = newIndex;
 
-      // Separar por el guión '-'
-      const partes = valor.split('-').map(p => p.trim()).filter(p => p.length > 0);
+      const imgEl = document.getElementById('random-image');
+      const boxEl = document.getElementById('image-box');
 
-      if (partes.length !== 3) {
-        alert("La oración debe tener exactamente 3 partes separadas por un guión '-'.\n\nEjemplo: La niña - come - una manzana");
-        return;
-      }
+      imgEl.classList.remove('loaded');
+      imgEl.style.display = 'block';
+      boxEl.classList.add('has-image');
 
-      const nueva = {
-        texto: partes.join(' - '),
-        partes: partes,
-        pictoKeywords: [
-          limpiarPalabraClave(partes[0]),
-          limpiarPalabraClave(partes[1]),
-          limpiarPalabraClave(partes[2])
-        ]
+      imgEl.src = imageList[newIndex];
+      imgEl.onload = () => {
+        imgEl.classList.add('loaded');
       };
 
-      oraciones.push(nueva);
-      guardarEnStorage();
-      poblarSelectorOraciones();
-      cerrarModalNuevaOracion();
-      
-      // Cargar la nueva oración
-      cargarOracion(oraciones.length - 1);
-    }
-
-    function eliminarOracionActual() {
-      if (oraciones.length <= 1) {
-        alert("Debe haber al menos una oración en la lista.");
-        return;
-      }
-      if (confirm(`¿Deseas eliminar la oración:\n"${oraciones[indiceActual].partes.join(' + ')}"?`)) {
-        oraciones.splice(indiceActual, 1);
-        guardarEnStorage();
-        indiceActual = Math.max(0, indiceActual - 1);
-        poblarSelectorOraciones();
-        cargarOracion(indiceActual);
+      if ('vibrate' in navigator) {
+        navigator.vibrate(35);
       }
     }
 
-    // ========================================================
-    // 4. SÍNTESIS DE VOZ (TEXT-TO-SPEECH)
-    // ========================================================
-
-    let availableVoices = [];
-    let currentRate = 1.0;
-    let currentPitch = 1.0;
-    const voiceSelect = document.getElementById('voice-select');
-    const statusIndicator = document.getElementById('status-indicator');
-    const statusLabel = document.getElementById('status-label');
-
-    function cargarVoces() {
-      if (!('speechSynthesis' in window)) return;
-      availableVoices = window.speechSynthesis.getVoices();
-      voiceSelect.innerHTML = '';
-
-      const vocesEsp = availableVoices.filter(v => v.lang.startsWith('es'));
-      const otras = availableVoices.filter(v => !v.lang.startsWith('es'));
-      const lista = [...vocesEsp, ...otras];
-
-      lista.forEach(voice => {
-        const opt = document.createElement('option');
-        opt.value = voice.name;
-        opt.textContent = `${voice.name} (${voice.lang})${voice.lang.startsWith('es') ? ' ★' : ''}`;
-        if (voice.lang.startsWith('es') && !voiceSelect.value) {
-          opt.selected = true;
+    // ==========================================
+    // NAVIGATION TABS
+    // ==========================================
+    function switchTab(tabName) {
+      const tabs = ['preguntas', 'oraciones', 'proto2', 'imagen'];
+      tabs.forEach(t => {
+        const content = document.getElementById(`tab-${t}`);
+        const btn = document.getElementById(`tab-btn-${t}`);
+        if (t === tabName) {
+          content.classList.add('active');
+          btn.classList.add('active');
+        } else {
+          content.classList.remove('active');
+          btn.classList.remove('active');
         }
-        voiceSelect.appendChild(opt);
       });
 
-      if (voiceSelect.options.length === 0) {
-        const opt = document.createElement('option');
-        opt.textContent = "Voz estándar del sistema";
-        voiceSelect.appendChild(opt);
+      if (tabName === 'oraciones') {
+        const scrollView = document.getElementById('oraciones-scroll');
+        if (scrollView) scrollView.scrollTop = 0;
+      } else if (tabName === 'proto2') {
+        const scrollView = document.getElementById('proto2-scroll');
+        if (scrollView) scrollView.scrollTop = 0;
+      }
+    }
+
+    // ==========================================
+    // VOICE SPEECH SYNTHESIS
+    // ==========================================
+    let spanishVoice = null;
+
+    function initVoices() {
+      if ('speechSynthesis' in window) {
+        const voices = window.speechSynthesis.getVoices();
+        spanishVoice = voices.find(v => v.lang.startsWith('es') || v.lang.includes('es-')) || null;
       }
     }
 
     if ('speechSynthesis' in window) {
-      cargarVoces();
-      window.speechSynthesis.onvoiceschanged = cargarVoces;
+      initVoices();
+      window.speechSynthesis.onvoiceschanged = initVoices;
     }
 
-    function emitirVoz(texto, elementoActivo) {
-      if (!('speechSynthesis' in window)) {
-        alert("Tu navegador no soporta síntesis de voz nativa.");
-        return;
-      }
+    function sayWord(text) {
+      if (!('speechSynthesis' in window)) return;
 
       window.speechSynthesis.cancel();
-
-      // Vibración táctil si está disponible en teléfono
-      if ('vibrate' in navigator) {
-        navigator.vibrate(35);
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'es-ES';
+      if (spanishVoice) {
+        utterance.voice = spanishVoice;
       }
-
-      const utterance = new SpeechSynthesisUtterance(texto);
-      utterance.rate = currentRate;
-      utterance.pitch = currentPitch;
-
-      const voice = availableVoices.find(v => v.name === voiceSelect.value);
-      if (voice) {
-        utterance.voice = voice;
-      } else {
-        utterance.lang = 'es-ES';
-      }
-
-      utterance.onstart = () => {
-        statusIndicator.classList.add('speaking');
-        statusLabel.textContent = `Reproduciendo: "${texto}"`;
-        if (elementoActivo) elementoActivo.classList.add('speaking');
-      };
-
-      utterance.onend = () => {
-        statusIndicator.classList.remove('speaking');
-        statusLabel.textContent = `Toca un botón o pictograma para escuchar`;
-        if (elementoActivo) elementoActivo.classList.remove('speaking');
-      };
-
-      utterance.onerror = () => {
-        statusIndicator.classList.remove('speaking');
-        statusLabel.textContent = `Toca un botón o pictograma para escuchar`;
-        if (elementoActivo) elementoActivo.classList.remove('speaking');
-      };
-
+      utterance.rate = 0.9;
+      utterance.pitch = 1.05;
       window.speechSynthesis.speak(utterance);
+
+      if ('vibrate' in navigator) {
+        navigator.vibrate(40);
+      }
     }
 
-    // Funciones específicas llamadas desde los botones
-    function hablarPregunta(pregunta, btn) {
-      emitirVoz(pregunta, btn);
+    // ==========================================
+    // CELEBRATION AUDIO & EFFECTS
+    // ==========================================
+    let audioCtx = null;
+
+    function getAudioContext() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContextClass();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
     }
 
-    function hablarEnunciado(enunciado, card) {
-      emitirVoz(enunciado, card);
+    function playCelebrationFanfare() {
+      try {
+        const ctx = getAudioContext();
+        const now = ctx.currentTime;
+
+        const notes = [
+          { freq: 523.25, start: 0.00, dur: 0.12 }, // C5
+          { freq: 659.25, start: 0.10, dur: 0.12 }, // E5
+          { freq: 783.99, start: 0.20, dur: 0.14 }, // G5
+          { freq: 1046.50, start: 0.32, dur: 0.65 } // C6
+        ];
+
+        notes.forEach(note => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(note.freq, now + note.start);
+
+          gain.gain.setValueAtTime(0, now + note.start);
+          gain.gain.linearRampToValueAtTime(0.28, now + note.start + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + note.start + note.dur);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc.start(now + note.start);
+          osc.stop(now + note.start + note.dur + 0.05);
+        });
+
+        const sparkles = [1318.51, 1567.98, 2093.00, 2637.02];
+        sparkles.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + 0.35 + (idx * 0.07));
+
+          gain.gain.setValueAtTime(0, now + 0.35 + (idx * 0.07));
+          gain.gain.linearRampToValueAtTime(0.15, now + 0.35 + (idx * 0.07) + 0.01);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35 + (idx * 0.07) + 0.3);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc.start(now + 0.35 + (idx * 0.07));
+          osc.stop(now + 0.35 + (idx * 0.07) + 0.35);
+        });
+
+      } catch (e) {
+        console.error("Audio playback error:", e);
+      }
     }
 
-    function reproducirOracionCompleta() {
-      if (!oracionActual) return;
-      const oracionCompleta = oracionActual.partes.join(' ');
-      emitirVoz(oracionCompleta, null);
+    function celebrate() {
+      playCelebrationFanfare();
+
+      if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance('¡Yei!');
+        utterance.lang = 'es-ES';
+        if (spanishVoice) utterance.voice = spanishVoice;
+        utterance.rate = 1.1;
+        utterance.pitch = 1.35;
+        window.speechSynthesis.speak(utterance);
+      }
+
+      if ('vibrate' in navigator) {
+        navigator.vibrate([60, 50, 100]);
+      }
+
+      launchConfetti();
     }
 
-    // ========================================================
-    // 5. AJUSTES
-    // ========================================================
+    // Confetti System
+    const canvas = document.getElementById('confetti-canvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    let animationId = null;
 
-    function toggleAjustes() {
-      const body = document.getElementById('settings-body');
-      const arrow = document.getElementById('accordion-arrow');
-      body.classList.toggle('open');
-      arrow.textContent = body.classList.contains('open') ? '▲' : '▼';
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function launchConfetti() {
+      const colors = ['#ffd028', '#2ec486', '#38bdf8', '#8b5cf6', '#ff5e97', '#fb923c'];
+      const count = 55;
+
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: canvas.width / 2 + (Math.random() - 0.5) * 60,
+          y: canvas.height - 50,
+          w: Math.random() * 9 + 6,
+          h: Math.random() * 6 + 4,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          vx: (Math.random() - 0.5) * 14,
+          vy: -(Math.random() * 12 + 10),
+          gravity: 0.35,
+          rotation: Math.random() * 360,
+          rotSpeed: (Math.random() - 0.5) * 10,
+          opacity: 1
+        });
+      }
+
+      if (!animationId) {
+        animateConfetti();
+      }
     }
 
-    function actualizarVelocidad(v) {
-      currentRate = parseFloat(v);
-      document.getElementById('rate-val').textContent = `${v}x`;
-    }
+    function animateConfetti() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    function actualizarTono(v) {
-      currentPitch = parseFloat(v);
-      document.getElementById('pitch-val').textContent = v;
-    }
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += p.gravity;
+        p.rotation += p.rotSpeed;
+        p.opacity -= 0.012;
 
-    // Inicializar al cargar la página
-    window.addEventListener('DOMContentLoaded', () => {
-      inicializarOraciones();
-    });
+        if (p.opacity <= 0 || p.y > canvas.height) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rotation * Math.PI) / 180);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(0, p.opacity);
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      }
+
+      if (particles.length > 0) {
+        animationId = requestAnimationFrame(animateConfetti);
+      } else {
+        animationId = null;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
   </script>
 </body>
 </html>
