@@ -145,8 +145,22 @@ const SENTENCES_DATA = {
 };
 
 // ============================================================================
-// ESTADO DE LA APLICACIÓN
+// CONFIGURACIÓN DE CATEGORÍAS (PUNTO DE ENGANCHE FUTURO)
 // ============================================================================
+const SENTENCE_CATEGORIES = [
+  { id: 'categoria_1', label: 'Categoría 1' }, // Reemplazar con nombres reales
+  { id: 'categoria_2', label: 'Categoría 2' },
+  { id: 'categoria_3', label: 'Categoría 3' }
+];
+
+// ============================================================================
+// ESTADO DE LA APLICACIÓN Y SESIÓN FAMILIAR
+// ============================================================================
+const SESSION_STORAGE_KEY = 'arasaac_family_session';
+
+let currentFamilySession = null; // { family_id, family_label, login_session_id }
+let currentAttemptState = null;
+
 let currentSentenceKey = 'A';
 let currentStepIndex = 0;
 let accumulatedWords = [];
@@ -488,6 +502,268 @@ function renderConfetti() {
 }
 
 // ============================================================================
+// SESIÓN FAMILIAR Y PANTALLA DE ACCESO (SCREEN 0)
+// ============================================================================
+function saveFamilySession(sessionData) {
+  currentFamilySession = sessionData;
+  try {
+    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessionData));
+  } catch (e) {
+    console.warn('No se pudo guardar sesión en sessionStorage:', e);
+  }
+}
+
+function loadFamilySession() {
+  try {
+    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.family_id && parsed.login_session_id) {
+      return parsed;
+    }
+  } catch (e) {
+    console.warn('Error leyendo sesión de sessionStorage:', e);
+  }
+  return null;
+}
+
+function clearFamilySession() {
+  currentFamilySession = null;
+  try {
+    sessionStorage.removeItem(SESSION_STORAGE_KEY);
+  } catch (e) {}
+  try {
+    localStorage.removeItem(SESSION_STORAGE_KEY);
+  } catch (e) {}
+}
+
+function updateHeaderForSession() {
+  const badge = document.getElementById('family-badge');
+  const badgeLabel = document.getElementById('family-badge-label');
+  const logoutBtn = document.getElementById('btn-logout');
+
+  if (currentFamilySession) {
+    if (badgeLabel) badgeLabel.textContent = currentFamilySession.family_label || 'Familia';
+    if (badge) badge.style.display = 'inline-flex';
+    if (logoutBtn) logoutBtn.style.display = 'inline-flex';
+  } else {
+    if (badge) badge.style.display = 'none';
+    if (logoutBtn) logoutBtn.style.display = 'none';
+  }
+}
+
+function showLoginError(message) {
+  const errorEl = document.getElementById('login-error-msg');
+  if (!errorEl) return;
+  if (message) {
+    errorEl.textContent = message;
+    errorEl.style.display = 'block';
+  } else {
+    errorEl.textContent = '';
+    errorEl.style.display = 'none';
+  }
+}
+
+async function handleLoginSubmit(event) {
+  event.preventDefault();
+
+  const codeInput = document.getElementById('family-code-input');
+  const submitBtn = document.getElementById('btn-login-submit');
+  const rawCode = codeInput ? codeInput.value.trim().toUpperCase() : '';
+
+  if (!rawCode) {
+    showLoginError('Por favor, escribe tu código de familia.');
+    if (codeInput) codeInput.focus();
+    return;
+  }
+
+  showLoginError('');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Verificando...';
+  }
+
+  const result = await verifyFamilyCode(rawCode);
+
+  if (submitBtn) {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Ingresar ▶';
+  }
+
+  if (!result.ok) {
+    showLoginError(result.error || 'Código incorrecto.');
+    if (codeInput) {
+      codeInput.focus();
+      codeInput.select();
+    }
+    return;
+  }
+
+  saveFamilySession({
+    family_id: result.family_id,
+    family_label: result.family_label,
+    login_session_id: result.login_session_id
+  });
+
+  if (codeInput) codeInput.value = '';
+  updateHeaderForSession();
+  showScreen('screen-menu');
+}
+
+function logoutFamily() {
+  stopActiveRecording();
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+  }
+  abandonCurrentAttemptIfActive(false);
+  currentAttemptState = null;
+
+  clearFamilySession();
+  updateHeaderForSession();
+  showLoginError('');
+  showScreen('screen-login');
+
+  const codeInput = document.getElementById('family-code-input');
+  if (codeInput) {
+    codeInput.value = '';
+    codeInput.focus();
+  }
+}
+
+function initLoginScreen() {
+  const loginForm = document.getElementById('login-form');
+  const logoutBtn = document.getElementById('btn-logout');
+
+  if (loginForm) {
+    loginForm.addEventListener('submit', handleLoginSubmit);
+  }
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', logoutFamily);
+  }
+
+  // Restaurar sesión en sessionStorage al recargar (F5) sin contar nuevo inicio de sesión
+  const existingSession = loadFamilySession();
+  if (existingSession) {
+    currentFamilySession = existingSession;
+    updateHeaderForSession();
+    showScreen('screen-menu');
+  } else {
+    updateHeaderForSession();
+    showScreen('screen-login');
+    const codeInput = document.getElementById('family-code-input');
+    if (codeInput) codeInput.focus();
+  }
+}
+
+// ============================================================================
+// INSTRUMENTACIÓN DE INTENTOS EN SUPABASE
+// ============================================================================
+function beginAttemptTracking(sentenceKey, sentence, selectedCategory) {
+  const voiceErrorsInit = {};
+  sentence.voiceWords.forEach((w) => {
+    voiceErrorsInit[w.id] = 0;
+  });
+
+  const attemptState = {
+    attemptId: null,
+    attemptPromise: null,
+    sentenceKey,
+    sentenceText: sentence.sentenceText,
+    selectedCategory: selectedCategory || null,
+    startedAtMs: Date.now(),
+    discriminationCompletedAtMs: null,
+    discriminationErrors: { 1: 0, 2: 0, 3: 0 },
+    voiceErrors: voiceErrorsInit,
+    savedParts: {},
+    status: 'in_progress'
+  };
+
+  currentAttemptState = attemptState;
+
+  if (currentFamilySession && typeof startExerciseAttempt === 'function') {
+    attemptState.attemptPromise = startExerciseAttempt({
+      familyId: currentFamilySession.family_id,
+      loginSessionId: currentFamilySession.login_session_id,
+      sentenceKey,
+      sentenceText: sentence.sentenceText,
+      selectedCategory: attemptState.selectedCategory
+    }).then((attemptId) => {
+      attemptState.attemptId = attemptId;
+      return attemptId;
+    });
+  } else {
+    attemptState.attemptPromise = Promise.resolve(null);
+  }
+}
+
+async function resolveAttemptId(attemptState) {
+  if (!attemptState) return null;
+  if (attemptState.attemptId) return attemptState.attemptId;
+  if (attemptState.attemptPromise) {
+    try {
+      return await attemptState.attemptPromise;
+    } catch (e) {
+      return null;
+    }
+  }
+  return null;
+}
+
+async function recordPartResult(partType, partIndex, targetWord, errorsCount, validationMethod = null) {
+  const attemptState = currentAttemptState;
+  if (!attemptState) return;
+
+  const partKey = `${partType}_${partIndex}`;
+  if (attemptState.savedParts[partKey]) return;
+  attemptState.savedParts[partKey] = true;
+
+  const attemptId = await resolveAttemptId(attemptState);
+  if (!attemptId || typeof savePartResult !== 'function') return;
+
+  await savePartResult({
+    attemptId,
+    partType,
+    partIndex,
+    targetWord,
+    errorsCount,
+    validationMethod
+  });
+}
+
+async function completeCurrentAttempt(attemptState, durationSeconds) {
+  if (!attemptState) return;
+  const attemptId = await resolveAttemptId(attemptState);
+  if (!attemptId || typeof completeExerciseAttempt !== 'function') return;
+
+  await completeExerciseAttempt(attemptId, durationSeconds);
+}
+
+function abandonCurrentAttemptIfActive(useKeepalive = false) {
+  const attemptState = currentAttemptState;
+  if (!attemptState || attemptState.status !== 'in_progress') return;
+
+  attemptState.status = 'abandoned';
+  const durationSeconds = Math.max(1, Math.round((Date.now() - attemptState.startedAtMs) / 1000));
+
+  if (useKeepalive) {
+    if (attemptState.attemptId && typeof abandonExerciseAttempt === 'function') {
+      abandonExerciseAttempt(attemptState.attemptId, durationSeconds, true);
+    }
+    return;
+  }
+
+  resolveAttemptId(attemptState).then((attemptId) => {
+    if (attemptId && typeof abandonExerciseAttempt === 'function') {
+      abandonExerciseAttempt(attemptId, durationSeconds, false);
+    }
+  });
+}
+
+window.addEventListener('pagehide', () => {
+  abandonCurrentAttemptIfActive(true);
+});
+
+// ============================================================================
 // NAVEGACIÓN ENTRE PANTALLAS
 // ============================================================================
 function showScreen(screenId) {
@@ -497,12 +773,31 @@ function showScreen(screenId) {
 
   const backBtn = document.getElementById('btn-back-menu');
   if (backBtn) {
-    backBtn.style.display = screenId === 'screen-menu' ? 'none' : 'inline-flex';
+    const showBack = screenId !== 'screen-menu' && screenId !== 'screen-login';
+    backBtn.style.display = showBack ? 'inline-flex' : 'none';
   }
+
+  const voiceBar = document.querySelector('.voice-settings-bar');
+  if (voiceBar) {
+    voiceBar.style.display = screenId === 'screen-login' ? 'none' : 'flex';
+  }
+
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function goToMenu() {
+  if (!currentFamilySession) {
+    showScreen('screen-login');
+    return;
+  }
+
+  stopActiveRecording();
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+  }
+  abandonCurrentAttemptIfActive(false);
+  currentAttemptState = null;
+
   showScreen('screen-menu');
 }
 
@@ -524,19 +819,40 @@ function closeEmptyModal() {
 }
 
 // ============================================================================
-// INICIO Y SECUENCIA DE PREGUNTAS (ORACIÓN A)
+// INICIO Y SECUENCIA DE PREGUNTAS (ORACIÓN A, B, C)
 // ============================================================================
-function startSentenceActivity(sentenceKey) {
+function startSentenceActivity(sentenceKey, selectedCategory = null) {
+  if (!currentFamilySession) {
+    showScreen('screen-login');
+    return;
+  }
+
   const sentence = SENTENCES_DATA[sentenceKey];
   if (!sentence) {
     showEmptyModal(sentenceKey);
     return;
   }
 
+  // Si había un intento inconcluso (ej. al pulsar "Repetir"), marcarlo como abandonado
+  abandonCurrentAttemptIfActive(false);
+
+  // Detener grabaciones o audios previos y reiniciar estado de voz para esta oración
+  stopActiveRecording();
+  if (activeAudioSource) {
+    try { activeAudioSource.stop(); } catch (e) {}
+    activeAudioSource = null;
+  }
+  sentence.voiceWords.forEach((w) => {
+    delete voiceRecordings[w.id];
+  });
+
   currentSentenceKey = sentenceKey;
   currentStepIndex = 0;
   // Inicializamos la oración con el título/palabra inicial: "LA"
   accumulatedWords = [...sentence.initialContext.words];
+
+  // Iniciar registro del intento en Supabase y cronómetro
+  beginAttemptTracking(sentenceKey, sentence, selectedCategory);
 
   showScreen('screen-activity');
   renderCurrentStep();
@@ -641,6 +957,12 @@ function handleOptionSelection(cardElement, option) {
       feedback.textContent = `¡Correcto! Es "${option.word}" ⭐`;
     }
 
+    // Registrar paso de discriminación en Supabase
+    if (currentAttemptState) {
+      const stepErrors = currentAttemptState.discriminationErrors[step.stepIndex] || 0;
+      recordPartResult('discrimination_step', step.stepIndex, option.word, stepErrors, null);
+    }
+
     // Agregar palabra elegida a la oración acumulada
     accumulatedWords.push({ word: option.word, pictoId: option.pictoId });
 
@@ -661,6 +983,11 @@ function handleOptionSelection(cardElement, option) {
   } else {
     // INCORRECTO:
     // 1. Mostrar X, iluminar en rojo, sonido boing, no avanza
+    if (currentAttemptState) {
+      currentAttemptState.discriminationErrors[step.stepIndex] =
+        (currentAttemptState.discriminationErrors[step.stepIndex] || 0) + 1;
+    }
+
     cardElement.classList.add('incorrect');
     playErrorSound();
     speakText(`Esa no es. ¡Prueba otra vez!`);
@@ -682,6 +1009,11 @@ function handleOptionSelection(cardElement, option) {
 // ============================================================================
 function finishSentenceWithAutoCompletion() {
   const sentence = SENTENCES_DATA[currentSentenceKey];
+
+  // Mantener cronómetro total corriendo hasta completar screen-voice (Opción B)
+  if (currentAttemptState) {
+    currentAttemptState.discriminationCompletedAtMs = Date.now();
+  }
 
   // Complemento automático con "SOPA"
   const autoWord = sentence.autoComplete;
@@ -862,6 +1194,15 @@ function toggleVoiceRecording(wordId, targetWord) {
 
       recBtn.classList.remove('recording');
       recBtn.innerHTML = '🎙️ Grabar de nuevo';
+
+      if (!voiceRecordings[wordId] || !voiceRecordings[wordId].isValidated) {
+        const approveBtn = document.getElementById(`btn-approve-${wordId}`);
+        if (approveBtn) approveBtn.style.display = 'inline-block';
+        if (statusLabel && statusLabel.classList.contains('listening')) {
+          statusLabel.className = 'record-status-text';
+          statusLabel.textContent = `Audio grabado. ¿Pronunciaste "${targetWord}"?`;
+        }
+      }
     };
 
     activeMediaRecorder.start();
@@ -935,6 +1276,16 @@ function startSpeechRecognition(wordId, targetWord) {
     if (approveBtn) approveBtn.style.display = 'inline-block';
   };
 
+  activeSpeechRecognizer.onend = () => {
+    if ((!voiceRecordings[wordId] || !voiceRecordings[wordId].isValidated) && activeRecordingId === wordId) {
+      if (approveBtn) approveBtn.style.display = 'inline-block';
+      if (statusLabel && statusLabel.classList.contains('listening')) {
+        statusLabel.className = 'record-status-text';
+        statusLabel.textContent = `Audio grabado. ¿Pronunciaste "${targetWord}"?`;
+      }
+    }
+  };
+
   try {
     activeSpeechRecognizer.start();
   } catch (e) {
@@ -956,19 +1307,17 @@ function checkWordMatch(wordId, recognizedText) {
   });
 }
 
-function handleWordRecognizedSuccess(wordId, targetWord, transcript) {
-  stopActiveRecording();
-
+function markVoiceWordAsValidated(wordId, validationMethod, statusText, confettiCount) {
   voiceRecordings[wordId] = voiceRecordings[wordId] || {};
   voiceRecordings[wordId].isValidated = true;
 
   playCorrectSound();
-  triggerConfetti(1500, 40);
+  triggerConfetti(validationMethod === 'speech' ? 1500 : 1000, confettiCount);
 
   const statusLabel = document.getElementById(`status-${wordId}`);
   if (statusLabel) {
     statusLabel.className = 'record-status-text ok';
-    statusLabel.textContent = `⭐ ¡Excelente pronunciación! (${transcript})`;
+    statusLabel.textContent = statusText;
   }
 
   const approveBtn = document.getElementById(`btn-approve-${wordId}`);
@@ -979,10 +1328,44 @@ function handleWordRecognizedSuccess(wordId, targetWord, transcript) {
 
   // Habilitar botones de reproducción y modulación
   enablePlaybackButtons(wordId);
+
+  // Registrar parte de voz en Supabase y completar intento si las 3 palabras están listas
+  const sentence = SENTENCES_DATA[currentSentenceKey];
+  if (sentence && currentAttemptState) {
+    const wordIdx = sentence.voiceWords.findIndex(w => w.id === wordId);
+    if (wordIdx !== -1) {
+      const targetItem = sentence.voiceWords[wordIdx];
+      const errorsCount = currentAttemptState.voiceErrors[wordId] || 0;
+      recordPartResult('voice_word', wordIdx + 1, targetItem.word, errorsCount, validationMethod);
+    }
+
+    const allValidated = sentence.voiceWords.every(
+      w => voiceRecordings[w.id] && voiceRecordings[w.id].isValidated === true
+    );
+    if (allValidated && currentAttemptState.status === 'in_progress') {
+      currentAttemptState.status = 'completed';
+      const durationSeconds = Math.max(1, Math.round((Date.now() - currentAttemptState.startedAtMs) / 1000));
+      completeCurrentAttempt(currentAttemptState, durationSeconds);
+    }
+  }
+}
+
+function handleWordRecognizedSuccess(wordId, targetWord, transcript) {
+  stopActiveRecording();
+  markVoiceWordAsValidated(
+    wordId,
+    'speech',
+    `⭐ ¡Excelente pronunciación! (${transcript})`,
+    40
+  );
 }
 
 function handleWordRecognizedFail(wordId, targetWord, transcript) {
   stopActiveRecording();
+
+  if (currentAttemptState) {
+    currentAttemptState.voiceErrors[wordId] = (currentAttemptState.voiceErrors[wordId] || 0) + 1;
+  }
 
   const statusLabel = document.getElementById(`status-${wordId}`);
   if (statusLabel) {
@@ -996,25 +1379,12 @@ function handleWordRecognizedFail(wordId, targetWord, transcript) {
 }
 
 function manualApproveWord(wordId) {
-  voiceRecordings[wordId] = voiceRecordings[wordId] || {};
-  voiceRecordings[wordId].isValidated = true;
-
-  playCorrectSound();
-  triggerConfetti(1000, 30);
-
-  const statusLabel = document.getElementById(`status-${wordId}`);
-  if (statusLabel) {
-    statusLabel.className = 'record-status-text ok';
-    statusLabel.textContent = `⭐ ¡Audio validado y guardado!`;
-  }
-
-  const approveBtn = document.getElementById(`btn-approve-${wordId}`);
-  if (approveBtn) approveBtn.style.display = 'none';
-
-  const row = document.getElementById(`row-${wordId}`);
-  if (row) row.classList.add('recorded-success');
-
-  enablePlaybackButtons(wordId);
+  markVoiceWordAsValidated(
+    wordId,
+    'manual',
+    '⭐ ¡Audio validado y guardado!',
+    30
+  );
 }
 
 function enablePlaybackButtons(wordId) {
@@ -1088,9 +1458,14 @@ function playRecordedAudioEffect(wordId, effectType) {
   }
 }
 
-// Inicialización del selector de voces y eventos
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initVoiceSelector);
-} else {
+// Inicialización de sesión familiar, selector de voces y eventos
+function initApp() {
   initVoiceSelector();
+  initLoginScreen();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
 }

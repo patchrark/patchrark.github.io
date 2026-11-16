@@ -26,8 +26,14 @@
         </div>
       </div>
       <div class="header-controls">
+        <span id="family-badge" class="family-badge" style="display: none;">
+          👥 <span id="family-badge-label">Familia</span>
+        </span>
         <button id="btn-back-menu" class="nav-btn" style="display: none;" title="Volver al menú inicial">
           🏠 Menú Principal
+        </button>
+        <button id="btn-logout" class="nav-btn nav-btn-logout" style="display: none;" title="Cambiar código de familia o salir">
+          🔄 Cambiar código / Salir
         </button>
       </div>
     </header>
@@ -57,9 +63,38 @@
     </div>
 
     <!-- =======================================================
+         SCREEN 0: ACCESO POR CÓDIGO (FAMILIAS)
+         ======================================================= -->
+    <section id="screen-login" class="screen active">
+      <div class="login-card">
+        <div class="login-icon">🔑</div>
+        <h2>Acceso Familiar</h2>
+        <p class="login-subtitle">Ingresa tu código de acceso para comenzar los ejercicios</p>
+
+        <form id="login-form" class="login-form" novalidate>
+          <label for="family-code-input" class="login-label">Código de familia</label>
+          <input
+            type="text"
+            id="family-code-input"
+            class="login-code-input"
+            placeholder="Ej: SOL-2026"
+            autocomplete="off"
+            autocapitalize="characters"
+            spellcheck="false"
+            required
+          >
+          <div id="login-error-msg" class="login-error-msg" role="alert" style="display: none;"></div>
+          <button type="submit" id="btn-login-submit" class="login-submit-btn">
+            Ingresar ▶
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- =======================================================
          SCREEN 1: MENU PRINCIPAL
          ======================================================= -->
-    <section id="screen-menu" class="screen active">
+    <section id="screen-menu" class="screen">
       <div class="menu-hero">
         <h2>Selecciona una Oración</h2>
         <p>Elige una opción para comenzar la secuencia de preguntas y discriminación</p>
@@ -223,6 +258,10 @@
     </footer>
   </div>
 
+  <!-- Supabase JS v2 (CDN sin bundler) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Configuración y helpers de Supabase -->
+  <script src="supabase-client.js"></script>
   <!-- Main logic script -->
   <script src="app.js"></script>
 </body>
