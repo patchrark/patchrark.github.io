@@ -104,7 +104,7 @@ async function verifyFamilyCode(code) {
     return {
       ok: true,
       family_id: payload.family_id,
-      family_label: payload.family_label,
+      family_label: payload.family_label || payload.display_name,
       login_session_id: payload.login_session_id
     };
   } catch (err) {
@@ -306,4 +306,95 @@ async function abandonExerciseAttempt(attemptId, durationSeconds, useKeepalive =
     console.warn('Excepción en abandonExerciseAttempt:', err);
     return false;
   }
+}
+
+// ============================================================================
+// TAPit: SESIONES DE USO, APARATO Y FICHAS
+// ============================================================================
+
+/**
+ * Llama a una funcion RPC y devuelve su respuesta (o null si falla).
+ * @param {string} fn
+ * @param {object} params
+ * @returns {Promise<any|null>}
+ */
+async function callRpc(fn, params) {
+  const client = getSupabaseClient();
+  if (!client) return null;
+  try {
+    const { data, error } = await client.rpc(fn, params);
+    if (error) {
+      console.warn(`Error en ${fn}:`, error);
+      return null;
+    }
+    return unwrapRpcData(data);
+  } catch (err) {
+    console.warn(`Excepción en ${fn}:`, err);
+    return null;
+  }
+}
+
+/** Abre una sesion de uso (cada apertura de la app). Devuelve el id o null. */
+async function appOpenSession(familyId) {
+  const payload = await callRpc('app_open_session', {
+    p_family_id: familyId,
+    p_device_info: (navigator.userAgent || '').slice(0, 300)
+  });
+  return payload && payload.ok ? payload.app_session_id : null;
+}
+
+/** Marca actividad en la sesion de uso. */
+async function appTouchSession(appSessionId) {
+  if (!appSessionId) return;
+  await callRpc('app_touch_session', { p_app_session_id: appSessionId });
+}
+
+/**
+ * Pregunta por el estado del aparato y si hay una ficha nueva.
+ * @returns {Promise<{ok:boolean, has_device:boolean, online:boolean, last_event_id:number, card:object|null}|null>}
+ */
+async function appPoll(familyId, afterId) {
+  return callRpc('app_poll', {
+    p_family_id: familyId,
+    p_after_id: afterId === null || afterId === undefined ? null : afterId
+  });
+}
+
+/** Envia una orden al aparato de la familia: 'start', 'open' (arg 1-3), 'close_all', 'finish'. */
+async function appSendCommand(familyId, command, arg = null) {
+  const payload = await callRpc('app_send_command', {
+    p_family_id: familyId,
+    p_command: command,
+    p_arg: arg
+  });
+  return Boolean(payload && payload.ok);
+}
+
+/** Version que sobrevive al cierre de la pagina (para avisar 'finish' al salir). */
+function appSendCommandKeepalive(familyId, command, arg = null) {
+  if (!isSupabaseConfigured() || typeof fetch !== 'function') return;
+  try {
+    fetch(`${SUPABASE_URL}/rest/v1/rpc/app_send_command`, {
+      method: 'POST',
+      keepalive: true,
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+      },
+      body: JSON.stringify({ p_family_id: familyId, p_command: command, p_arg: arg })
+    }).catch(() => {});
+  } catch (err) {}
+}
+
+/** Inicia un intento ligado a la ficha, la sesion de uso y el aparato. Devuelve attemptId o null. */
+async function appStartAttempt({ familyId, appSessionId, sentenceKey, sentenceText, cardUid }) {
+  const payload = await callRpc('app_start_attempt', {
+    p_family_id: familyId,
+    p_app_session_id: appSessionId || null,
+    p_sentence_key: sentenceKey,
+    p_sentence_text: sentenceText,
+    p_card_uid: cardUid || null
+  });
+  return payload && payload.ok ? payload.attempt_id : null;
 }

@@ -3,8 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Discriminación de Oraciones con Pictogramas ARASAAC</title>
+  <title>TAPit</title>
+  <!-- TAPit: instalable en la pantalla de inicio del iPhone -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="TAPit">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#ff7a45">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="tapit.css">
   <!-- Google Fonts for friendly, child-appropriate readability -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,21 +29,20 @@
     <!-- App Header -->
     <header class="app-header">
       <div class="logo-area">
-        <div class="logo-icon">🥣</div>
         <div class="logo-text">
-          <h1>Juego de Oraciones</h1>
-          <p>Pictogramas ARASAAC • Discriminación & Voz</p>
+          <h1 class="tapit-logo">TAP<span>it</span></h1>
+          <p>Juego de oraciones con pictogramas</p>
         </div>
       </div>
       <div class="header-controls">
         <span id="family-badge" class="family-badge" style="display: none;">
           👥 <span id="family-badge-label">Familia</span>
         </span>
-        <button id="btn-back-menu" class="nav-btn" style="display: none;" title="Volver al menú inicial">
-          🏠 Menú Principal
+        <button id="btn-back-menu" class="nav-btn" style="display: none;" title="Terminar y volver al inicio">
+          ✋ Terminar
         </button>
         <button id="btn-logout" class="nav-btn nav-btn-logout" style="display: none;" title="Cambiar código de familia o salir">
-          🔄 Cambiar código / Salir
+          🔄 Salir
         </button>
       </div>
     </header>
@@ -95,59 +104,30 @@
          SCREEN 1: MENU PRINCIPAL
          ======================================================= -->
     <section id="screen-menu" class="screen">
-      <div class="menu-hero">
-        <h2>Selecciona una Oración</h2>
-        <p>Elige una opción para comenzar la secuencia de preguntas y discriminación</p>
-      </div>
-
-      <div class="menu-grid">
-        <!-- ORACIÓN A -->
-        <div class="menu-card active-card" onclick="startSentenceActivity('A')">
-          <span class="card-badge badge-available">Disponible</span>
-          <div class="menu-card-icon">👧🥣</div>
-          <h3 class="menu-card-title">ORACIÓN A</h3>
-          <p class="menu-card-desc">"La niña come una sopa"</p>
-          <div class="menu-card-pictos">
-            <img src="https://static.arasaac.org/pictograms/8476/8476_500.png" alt="La" title="La">
-            <img src="https://static.arasaac.org/pictograms/2484/2484_500.png" alt="Niña" title="Niña">
-            <img src="https://static.arasaac.org/pictograms/2349/2349_500.png" alt="Come" title="Come">
-            <img src="https://static.arasaac.org/pictograms/8474/8474_500.png" alt="Una" title="Una">
-            <img src="https://static.arasaac.org/pictograms/2573/2573_500.png" alt="Sopa" title="Sopa">
-          </div>
-          <button class="btn-card btn-play">¡Comenzar! ▶</button>
+      <div class="tapit-wait">
+        <div id="install-hint" class="install-hint" style="display: none;">
+          <span>📲 Para usar TAPit como app: toca <b>Compartir</b> y luego <b>Agregar a inicio</b>.</span>
+          <button class="install-hint-close" onclick="closeInstallHint()" aria-label="Cerrar">✕</button>
         </div>
 
-        <!-- ORACIÓN B -->
-        <div class="menu-card active-card" onclick="startSentenceActivity('B')">
-          <span class="card-badge badge-available">Disponible</span>
-          <div class="menu-card-icon">👧🍽️</div>
-          <h3 class="menu-card-title">ORACIÓN B</h3>
-          <p class="menu-card-desc">"La chica lava los platos"</p>
-          <div class="menu-card-pictos">
-            <img src="https://static.arasaac.org/pictograms/8476/8476_500.png" alt="La" title="La">
-            <img src="https://static.arasaac.org/pictograms/2484/2484_500.png" alt="Chica" title="Chica">
-            <img src="https://static.arasaac.org/pictograms/8617/8617_500.png" alt="Lava" title="Lava">
-            <img src="https://static.arasaac.org/pictograms/8477/8477_500.png" alt="Los" title="Los">
-            <img src="https://static.arasaac.org/pictograms/2532/2532_500.png" alt="Platos" title="Platos">
+        <div class="tapit-wait-visual" aria-hidden="true">
+          <div class="tapit-device">
+            <div class="tapit-device-slot"></div>
           </div>
-          <button class="btn-card btn-play">¡Comenzar! ▶</button>
+          <div class="tapit-card-anim">
+            <div class="tapit-card-line"></div>
+            <div class="tapit-card-line short"></div>
+          </div>
         </div>
 
-        <!-- ORACIÓN C -->
-        <div class="menu-card active-card" onclick="startSentenceActivity('C')">
-          <span class="card-badge badge-available">Disponible</span>
-          <div class="menu-card-icon">👩📖</div>
-          <h3 class="menu-card-title">ORACIÓN C</h3>
-          <p class="menu-card-desc">"La mamá lee un libro"</p>
-          <div class="menu-card-pictos">
-            <img src="https://static.arasaac.org/pictograms/8476/8476_500.png" alt="La" title="La">
-            <img src="https://static.arasaac.org/pictograms/2458/2458_500.png" alt="Mamá" title="Mamá">
-            <img src="https://static.arasaac.org/pictograms/7141/7141_500.png" alt="Lee" title="Lee">
-            <img src="https://static.arasaac.org/pictograms/8474/8474_500.png" alt="Un" title="Un">
-            <img src="https://static.arasaac.org/pictograms/2450/2450_500.png" alt="Libro" title="Libro">
-          </div>
-          <button class="btn-card btn-play">¡Comenzar! ▶</button>
+        <h2 class="tapit-wait-title">Acerca una ficha a TAPit</h2>
+        <p class="tapit-wait-sub">La actividad aparecerá aquí automáticamente.</p>
+
+        <div id="device-status" class="device-status" data-state="unknown">
+          <span class="device-status-dot"></span>
+          <span id="device-status-label">Buscando TAPit...</span>
         </div>
+        <p id="device-status-help" class="device-status-help" style="display: none;"></p>
       </div>
     </section>
 
@@ -197,7 +177,7 @@
       <div class="sentence-complete-view">
         <div class="celebration-badge">🎉 ⭐ 🏆</div>
         <h2>¡Excelente! ¡Oración Completa!</h2>
-        <p class="subtitle">Has seleccionado las palabras correctas y se ha complementado automáticamente la oración.</p>
+        <p class="subtitle">Elegiste todas las palabras correctas. ¡Mira tu ficha TAPit!</p>
 
         <!-- Full sentence strip with all pictograms -->
         <div id="full-sentence-strip" class="full-sentence-strip">
@@ -209,8 +189,8 @@
           <button id="btn-listen-sentence" class="action-btn btn-tts" onclick="speakCurrentSentence()">
             🔊 Escuchar Oración
           </button>
-          <button class="action-btn btn-advance-voice" onclick="goToVoicePractice()">
-            🎤 ¡Practicar mi voz con las 3 palabras! ▶
+          <button class="action-btn btn-advance-voice" onclick="goToMenu()">
+            ✨ Siguiente ficha ▶
           </button>
         </div>
       </div>
@@ -245,9 +225,9 @@
     <!-- Empty Modal for Oraciones B & C -->
     <div id="empty-modal" class="modal-overlay">
       <div class="modal-content">
-        <div class="modal-icon">🏗️</div>
-        <h3 id="modal-sentence-title">Oración en Construcción</h3>
-        <p>Esta oración aún no ha sido configurada. El juego iniciará con la <strong>ORACIÓN A</strong> ("La niña come una sopa"). Podrás añadir o personalizar nuevas oraciones en el archivo de configuración.</p>
+        <div class="modal-icon">🃏</div>
+        <h3 id="modal-sentence-title">Esta ficha aún no está lista</h3>
+        <p id="modal-sentence-text">Prueba con otra ficha.</p>
         <button class="modal-btn" onclick="closeEmptyModal()">Entendido</button>
       </div>
     </div>

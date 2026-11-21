@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>TAPit · Resumen del piloto</title>
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <style>
+    :root {
+      --accent: #ff7a45; --ink: #2b2d42; --muted: #6c757d; --bg: #f6f4f1; --card: #fff;
+      --ok: #1fbf85; --warn: #f97316; --bad: #e63946; --line: #ece8e3;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); padding: 24px; }
+    .wrap { max-width: 1180px; margin: 0 auto; }
+    .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
+    .logo { font-size: 28px; font-weight: 800; letter-spacing: -1px; }
+    .logo span { color: var(--accent); }
+    .logo small { font-size: 15px; font-weight: 500; color: var(--muted); letter-spacing: 0; margin-left: 10px; }
+    .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; color: var(--muted); font-size: 14px; }
+    select, input { font: inherit; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+    button { font: inherit; cursor: pointer; border: none; border-radius: 10px; padding: 9px 14px; background: var(--ink); color: #fff; font-weight: 600; }
+    button.ghost { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+    button.accent { background: var(--accent); }
+    button.small { padding: 6px 10px; font-size: 13px; }
+    h2 { font-size: 18px; margin: 30px 0 12px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 16px; }
+    .card { background: var(--card); border-radius: 18px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,.04); }
+    .fam-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .fam-name { font-size: 19px; font-weight: 700; }
+    .fam-code { color: var(--muted); font-size: 13px; margin-top: 2px; }
+    .pill { display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px; border-radius: 999px; font-size: 13px; font-weight: 600; background: #f1f1f4; color: var(--muted); white-space: nowrap; }
+    .pill .dot { width: 9px; height: 9px; border-radius: 50%; background: #b9bac5; }
+    .pill.on { background: #e6f9f1; color: #12805c; } .pill.on .dot { background: var(--ok); }
+    .pill.off { background: #fff0ec; color: #c2410c; } .pill.off .dot { background: var(--warn); }
+    .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+    .kpi { background: #faf8f6; border-radius: 12px; padding: 10px 12px; }
+    .kpi b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+    .kpi span { font-size: 12px; color: var(--muted); }
+    .meta { margin-top: 12px; font-size: 13px; color: var(--muted); line-height: 1.6; }
+    .meta-actions { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 10px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; }
+    td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .table-card { background: var(--card); border-radius: 18px; padding: 8px 12px; box-shadow: 0 2px 10px rgba(0,0,0,.04); overflow-x: auto; }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; margin: 1px 2px 1px 0; }
+    .tag.done { background: #e6f9f1; color: #12805c; }
+    .tag.aband { background: #fdecee; color: #b42318; }
+    .tag.prog { background: #eef2ff; color: #3949ab; }
+    .tag.new { background: #fff4ee; color: #c2410c; }
+    .errs { color: var(--muted); font-size: 12px; }
+    .empty { color: var(--muted); padding: 16px 6px; font-size: 14px; }
+    .login { max-width: 380px; margin: 10vh auto; background: #fff; border-radius: 20px; padding: 28px; box-shadow: 0 2px 10px rgba(0,0,0,.05); }
+    .login h1 { font-size: 30px; font-weight: 800; letter-spacing: -1px; }
+    .login h1 span { color: var(--accent); }
+    .login p { color: var(--muted); margin: 6px 0 18px; }
+    .login input { width: 100%; margin-bottom: 10px; padding: 13px 14px; font-size: 16px; }
+    .login button { width: 100%; padding: 13px; font-size: 16px; }
+    .err { color: var(--bad); font-size: 14px; margin-top: 10px; min-height: 18px; }
+    .live { font-size: 13px; color: var(--muted); }
+    .live .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); margin-right: 6px; animation: blink 2s infinite; }
+    @keyframes blink { 50% { opacity: .3; } }
+    .hide { display: none !important; }
+    .mono { font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <!-- Acceso -->
+  <div id="view-login" class="login hide">
+    <h1>TAP<span>it</span></h1>
+    <p>Resumen del piloto · acceso privado</p>
+    <form id="login-form">
+      <input id="email" type="email" placeholder="Correo" autocomplete="username" required>
+      <input id="password" type="password" placeholder="Contraseña" autocomplete="current-password" required>
+      <button type="submit" class="accent" id="login-btn">Entrar</button>
+      <div class="err" id="login-err"></div>
+    </form>
+  </div>
+
+  <!-- Resumen -->
+  <div id="view-dash" class="wrap hide">
+    <div class="top">
+      <div class="logo">TAP<span>it</span><small>Resumen del piloto</small></div>
+      <div class="controls">
+        <span class="live" id="live"><span class="dot"></span>En vivo</span>
+        <label>Periodo
+          <select id="days">
+            <option value="7">Últimos 7 días</option>
+            <option value="14" selected>Últimos 14 días</option>
+            <option value="30">Últimos 30 días</option>
+          </select>
+        </label>
+        <button class="ghost" id="btn-csv">Descargar CSV</button>
+        <button class="ghost" id="btn-logout">Salir</button>
+      </div>
+    </div>
+
+    <div class="grid" id="families"></div>
+
+    <h2>Uso por día</h2>
+    <div class="table-card"><table id="daily"></table></div>
+
+    <h2>Sesiones recientes</h2>
+    <div class="table-card"><table id="sessions"></table></div>
+
+    <h2>Fichas registradas</h2>
+    <div class="table-card"><table id="cards"></table></div>
+
+    <h2>Actividad de los aparatos</h2>
+    <div class="table-card"><table id="events"></table></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-client.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

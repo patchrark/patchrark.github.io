@@ -158,6 +158,17 @@ const SENTENCE_CATEGORIES = [
 // ============================================================================
 const SESSION_STORAGE_KEY = 'arasaac_family_session';
 
+// TAPit: nombre del producto (cambiarlo aqui tambien lo cambia en los textos de la app)
+const APP_NAME = 'TAPit';
+const APP_SESSION_STORAGE_KEY = 'tapit_app_session';   // { id, lastActivityMs }
+const APP_SESSION_TIMEOUT_MS = 10 * 60 * 1000;         // 10 min sin uso = nueva sesion
+const DEVICE_POLL_MS = 800;                            // cada cuanto se pregunta por fichas nuevas
+let currentAppSessionId = null;
+let devicePollTimer = null;
+let devicePollBusy = false;
+let lastDeviceEventId = null;
+let lastSessionTouchMs = 0;
+
 let currentFamilySession = null; // { family_id, family_label, login_session_id }
 let currentAttemptState = null;
 
@@ -507,22 +518,23 @@ function renderConfetti() {
 function saveFamilySession(sessionData) {
   currentFamilySession = sessionData;
   try {
-    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessionData));
+    // TAPit: se recuerda en el telefono para no pedir el codigo cada vez
+    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessionData));
   } catch (e) {
-    console.warn('No se pudo guardar sesión en sessionStorage:', e);
+    console.warn('No se pudo guardar sesión en localStorage:', e);
   }
 }
 
 function loadFamilySession() {
   try {
-    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    const raw = localStorage.getItem(SESSION_STORAGE_KEY) || sessionStorage.getItem(SESSION_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (parsed && parsed.family_id && parsed.login_session_id) {
+    if (parsed && parsed.family_id) {
       return parsed;
     }
   } catch (e) {
-    console.warn('Error leyendo sesión de sessionStorage:', e);
+    console.warn('Error leyendo sesión guardada:', e);
   }
   return null;
 }
@@ -534,7 +546,10 @@ function clearFamilySession() {
   } catch (e) {}
   try {
     localStorage.removeItem(SESSION_STORAGE_KEY);
+    localStorage.removeItem(APP_SESSION_STORAGE_KEY);
   } catch (e) {}
+  currentAppSessionId = null;
+  stopDevicePolling();
 }
 
 function updateHeaderForSession() {
@@ -608,6 +623,7 @@ async function handleLoginSubmit(event) {
   if (codeInput) codeInput.value = '';
   updateHeaderForSession();
   showScreen('screen-menu');
+  onFamilyReady();
 }
 
 function logoutFamily() {
@@ -647,6 +663,7 @@ function initLoginScreen() {
     currentFamilySession = existingSession;
     updateHeaderForSession();
     showScreen('screen-menu');
+    onFamilyReady();
   } else {
     updateHeaderForSession();
     showScreen('screen-login');
@@ -658,7 +675,7 @@ function initLoginScreen() {
 // ============================================================================
 // INSTRUMENTACIÓN DE INTENTOS EN SUPABASE
 // ============================================================================
-function beginAttemptTracking(sentenceKey, sentence, selectedCategory) {
+function beginAttemptTracking(sentenceKey, sentence, selectedCategory, cardUid = null) {
   const voiceErrorsInit = {};
   sentence.voiceWords.forEach((w) => {
     voiceErrorsInit[w.id] = 0;
@@ -680,13 +697,13 @@ function beginAttemptTracking(sentenceKey, sentence, selectedCategory) {
 
   currentAttemptState = attemptState;
 
-  if (currentFamilySession && typeof startExerciseAttempt === 'function') {
-    attemptState.attemptPromise = startExerciseAttempt({
+  if (currentFamilySession && typeof appStartAttempt === 'function') {
+    attemptState.attemptPromise = appStartAttempt({
       familyId: currentFamilySession.family_id,
-      loginSessionId: currentFamilySession.login_session_id,
+      appSessionId: currentAppSessionId,
       sentenceKey,
       sentenceText: sentence.sentenceText,
-      selectedCategory: attemptState.selectedCategory
+      cardUid
     }).then((attemptId) => {
       attemptState.attemptId = attemptId;
       return attemptId;
@@ -760,6 +777,9 @@ function abandonCurrentAttemptIfActive(useKeepalive = false) {
 }
 
 window.addEventListener('pagehide', () => {
+  if (currentAttemptState && currentAttemptState.status === 'in_progress' && currentFamilySession) {
+    appSendCommandKeepalive(currentFamilySession.family_id, 'finish');
+  }
   abandonCurrentAttemptIfActive(true);
 });
 
@@ -795,10 +815,14 @@ function goToMenu() {
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel();
   }
+  if (currentAttemptState && currentAttemptState.status === 'in_progress') {
+    sendDeviceCommand('finish');
+  }
   abandonCurrentAttemptIfActive(false);
   currentAttemptState = null;
 
   showScreen('screen-menu');
+  touchAppSession();
 }
 
 document.getElementById('btn-back-menu').addEventListener('click', goToMenu);
@@ -821,7 +845,7 @@ function closeEmptyModal() {
 // ============================================================================
 // INICIO Y SECUENCIA DE PREGUNTAS (ORACIÓN A, B, C)
 // ============================================================================
-function startSentenceActivity(sentenceKey, selectedCategory = null) {
+function startSentenceActivity(sentenceKey, selectedCategory = null, cardUid = null) {
   if (!currentFamilySession) {
     showScreen('screen-login');
     return;
@@ -851,8 +875,12 @@ function startSentenceActivity(sentenceKey, selectedCategory = null) {
   // Inicializamos la oración con el título/palabra inicial: "LA"
   accumulatedWords = [...sentence.initialContext.words];
 
+  // TAPit: el aparato entra en modo actividad (ignora otras fichas)
+  sendDeviceCommand('start');
+  touchAppSession();
+
   // Iniciar registro del intento en Supabase y cronómetro
-  beginAttemptTracking(sentenceKey, sentence, selectedCategory);
+  beginAttemptTracking(sentenceKey, sentence, selectedCategory, cardUid);
 
   showScreen('screen-activity');
   renderCurrentStep();
@@ -948,6 +976,10 @@ function handleOptionSelection(cardElement, option) {
     cardElement.classList.remove('incorrect');
     cardElement.classList.add('correct');
 
+    // TAPit: abrir la tapa de esta palabra (paso 1 -> tapa 1, etc.)
+    sendDeviceCommand('open', step.stepIndex);
+    touchAppSession();
+
     playCorrectSound();
     triggerConfetti(1200, 35);
     speakText(`¡Muy bien! ${option.word}`);
@@ -960,7 +992,7 @@ function handleOptionSelection(cardElement, option) {
     // Registrar paso de discriminación en Supabase
     if (currentAttemptState) {
       const stepErrors = currentAttemptState.discriminationErrors[step.stepIndex] || 0;
-      recordPartResult('discrimination_step', step.stepIndex, option.word, stepErrors, null);
+      recordPartResult('discrimination_step', step.stepIndex, option.word, stepErrors, 'click');
     }
 
     // Agregar palabra elegida a la oración acumulada
@@ -1011,9 +1043,14 @@ function finishSentenceWithAutoCompletion() {
   const sentence = SENTENCES_DATA[currentSentenceKey];
 
   // Mantener cronómetro total corriendo hasta completar screen-voice (Opción B)
-  if (currentAttemptState) {
+  if (currentAttemptState && currentAttemptState.status === 'in_progress') {
     currentAttemptState.discriminationCompletedAtMs = Date.now();
+    currentAttemptState.status = 'completed';
+    const durationSeconds = Math.max(1, Math.round((Date.now() - currentAttemptState.startedAtMs) / 1000));
+    completeCurrentAttempt(currentAttemptState, durationSeconds);
   }
+  sendDeviceCommand('finish');
+  touchAppSession();
 
   // Complemento automático con "SOPA"
   const autoWord = sentence.autoComplete;
@@ -1457,6 +1494,212 @@ function playRecordedAudioEffect(wordId, effectType) {
     console.error('Error reproduciendo efecto de audio:', err);
   }
 }
+
+
+// ============================================================================
+// TAPit: SESION DE USO, ESCUCHA DEL APARATO Y FICHAS
+// ============================================================================
+
+// Se llama cuando ya hay una familia identificada (login o sesion recordada)
+function onFamilyReady() {
+  ensureAppSession().then(() => startDevicePolling());
+  showInstallHintIfNeeded();
+}
+
+// Abre una sesion nueva si no hay una reciente (menos de 10 min sin uso)
+async function ensureAppSession() {
+  if (!currentFamilySession) return null;
+  let stored = null;
+  try {
+    stored = JSON.parse(localStorage.getItem(APP_SESSION_STORAGE_KEY) || 'null');
+  } catch (e) {}
+
+  const now = Date.now();
+  if (stored && stored.id && stored.familyId === currentFamilySession.family_id &&
+      now - stored.lastActivityMs < APP_SESSION_TIMEOUT_MS) {
+    currentAppSessionId = stored.id;
+    touchAppSession(true);
+    return currentAppSessionId;
+  }
+
+  const id = typeof appOpenSession === 'function'
+    ? await appOpenSession(currentFamilySession.family_id)
+    : null;
+  currentAppSessionId = id;
+  if (id) {
+    lastSessionTouchMs = now;
+    saveAppSessionLocal(id, now);
+  }
+  return id;
+}
+
+function saveAppSessionLocal(id, lastActivityMs) {
+  try {
+    localStorage.setItem(APP_SESSION_STORAGE_KEY, JSON.stringify({
+      id,
+      familyId: currentFamilySession ? currentFamilySession.family_id : null,
+      lastActivityMs
+    }));
+  } catch (e) {}
+}
+
+// Marca actividad (en el telefono siempre; en Supabase como maximo 1 vez por minuto)
+function touchAppSession(force = false) {
+  if (!currentAppSessionId) return;
+  const now = Date.now();
+  saveAppSessionLocal(currentAppSessionId, now);
+  if (force || now - lastSessionTouchMs > 60 * 1000) {
+    lastSessionTouchMs = now;
+    if (typeof appTouchSession === 'function') appTouchSession(currentAppSessionId);
+  }
+}
+
+// Envia una orden al aparato de la familia (sin bloquear la pantalla)
+function sendDeviceCommand(command, arg = null) {
+  if (!currentFamilySession || typeof appSendCommand !== 'function') return;
+  appSendCommand(currentFamilySession.family_id, command, arg);
+}
+
+function startDevicePolling() {
+  stopDevicePolling();
+  if (!currentFamilySession) return;
+  pollDeviceOnce();
+  devicePollTimer = setInterval(pollDeviceOnce, DEVICE_POLL_MS);
+}
+
+function stopDevicePolling() {
+  if (devicePollTimer) clearInterval(devicePollTimer);
+  devicePollTimer = null;
+}
+
+async function pollDeviceOnce() {
+  if (devicePollBusy || !currentFamilySession || document.hidden) return;
+  devicePollBusy = true;
+  try {
+    const res = await appPoll(currentFamilySession.family_id, lastDeviceEventId);
+    if (!res || !res.ok) {
+      renderDeviceStatus(null);
+      return;
+    }
+    renderDeviceStatus(res);
+
+    // Primera consulta: solo tomar como referencia el ultimo evento (no lecturas viejas)
+    if (lastDeviceEventId === null) {
+      lastDeviceEventId = res.last_event_id || 0;
+      return;
+    }
+
+    if (res.card && res.card.event_id > lastDeviceEventId) {
+      lastDeviceEventId = res.card.event_id;
+      handleCardDetected(res.card);
+    } else if (res.last_event_id > lastDeviceEventId) {
+      lastDeviceEventId = res.last_event_id;
+    }
+  } finally {
+    devicePollBusy = false;
+  }
+}
+
+function isActivityInProgress() {
+  const activity = document.getElementById('screen-activity');
+  return Boolean(activity && activity.classList.contains('active') &&
+    currentAttemptState && currentAttemptState.status === 'in_progress');
+}
+
+// Llega una ficha leida por el aparato
+function handleCardDetected(card) {
+  if (!card || card.role === 'config') return;
+
+  // Durante una actividad, otras fichas se ignoran
+  if (isActivityInProgress()) return;
+
+  closeEmptyModal();
+
+  const key = card.sentence_key;
+  if (!key || !SENTENCES_DATA[key]) {
+    showUnknownCardModal(card.card_uid);
+    return;
+  }
+
+  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  startSentenceActivity(key, null, card.card_uid);
+}
+
+function showUnknownCardModal(cardUid) {
+  const modal = document.getElementById('empty-modal');
+  const title = document.getElementById('modal-sentence-title');
+  const text = document.getElementById('modal-sentence-text');
+  if (title) title.textContent = 'Esta ficha aún no está lista';
+  if (text) {
+    text.innerHTML = 'Prueba con otra ficha.<br><span class="modal-uid">Código: ' +
+      String(cardUid || '').replace(/[^0-9A-F]/gi, '') + '</span>';
+  }
+  if (modal) modal.classList.add('active');
+}
+
+// Indicador "TAPit conectado / sin conexion"
+function renderDeviceStatus(res) {
+  const pill = document.getElementById('device-status');
+  const label = document.getElementById('device-status-label');
+  const help = document.getElementById('device-status-help');
+  if (!pill || !label) return;
+
+  let state = 'unknown';
+  let text = 'Buscando ' + APP_NAME + '...';
+  let helpText = '';
+
+  if (res && res.has_device === false) {
+    state = 'offline';
+    text = 'Sin ' + APP_NAME + ' asignado';
+    helpText = 'Avisa a quien te entregó ' + APP_NAME + '.';
+  } else if (res && res.online) {
+    state = 'online';
+    text = APP_NAME + ' conectado';
+  } else if (res) {
+    state = 'offline';
+    text = APP_NAME + ' sin conexión';
+    helpText = 'Revisa que esté enchufado y que la luz azul esté fija.';
+  } else {
+    state = 'offline';
+    text = 'Sin internet en el teléfono';
+    helpText = 'Revisa tu conexión WiFi.';
+  }
+
+  pill.dataset.state = state;
+  label.textContent = text;
+  if (help) {
+    help.textContent = helpText;
+    help.style.display = helpText ? 'block' : 'none';
+  }
+}
+
+// Sugerencia de "Agregar a pantalla de inicio" en iPhone (solo si no esta instalada)
+function showInstallHintIfNeeded() {
+  const hint = document.getElementById('install-hint');
+  if (!hint) return;
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+  const isStandalone = window.navigator.standalone === true ||
+    (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  let dismissed = false;
+  try { dismissed = localStorage.getItem('tapit_install_hint_closed') === '1'; } catch (e) {}
+  hint.style.display = (isIos && !isStandalone && !dismissed) ? 'flex' : 'none';
+}
+
+function closeInstallHint() {
+  const hint = document.getElementById('install-hint');
+  if (hint) hint.style.display = 'none';
+  try { localStorage.setItem('tapit_install_hint_closed', '1'); } catch (e) {}
+}
+
+// Al volver a la app: nueva sesion si paso mucho tiempo, y escuchar de nuevo
+document.addEventListener('visibilitychange', () => {
+  if (!currentFamilySession) return;
+  if (document.hidden) {
+    stopDevicePolling();
+  } else {
+    ensureAppSession().then(() => startDevicePolling());
+  }
+});
 
 // Inicialización de sesión familiar, selector de voces y eventos
 function initApp() {
