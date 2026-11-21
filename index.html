@@ -2,247 +2,317 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
   <title>TAPit</title>
-  <!-- TAPit: instalable en la pantalla de inicio del iPhone -->
+  <meta name="theme-color" content="#4965F5">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="icon" type="image/png" href="icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="TAPit">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="theme-color" content="#ff7a45">
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="tapit.css">
-  <!-- Google Fonts for friendly, child-appropriate readability -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700;800&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="tapit.css">
 </head>
-<body>
+<body data-screen="login">
 
-  <!-- Fullscreen celebration canvas for confetti -->
-  <canvas id="confetti-canvas"></canvas>
-
-  <div class="container">
-    <!-- App Header -->
-    <header class="app-header">
-      <div class="logo-area">
-        <div class="logo-text">
-          <h1 class="tapit-logo">TAP<span>it</span></h1>
-          <p>Juego de oraciones con pictogramas</p>
-        </div>
-      </div>
-      <div class="header-controls">
-        <span id="family-badge" class="family-badge" style="display: none;">
-          👥 <span id="family-badge-label">Familia</span>
-        </span>
-        <button id="btn-back-menu" class="nav-btn" style="display: none;" title="Terminar y volver al inicio">
-          ✋ Terminar
-        </button>
-        <button id="btn-logout" class="nav-btn nav-btn-logout" style="display: none;" title="Cambiar código de familia o salir">
-          🔄 Salir
-        </button>
-      </div>
-    </header>
-
-    <!-- Barra de configuración de voz del lector -->
-    <div class="voice-settings-bar">
-      <div class="voice-select-group">
-        <span class="voice-bar-icon">🗣️</span>
-        <label for="voice-select" class="voice-bar-label">Voz del Lector:</label>
-        <select id="voice-select" class="voice-dropdown" title="Elige la voz del lector">
-          <option value="">Cargando voces del sistema...</option>
-        </select>
-        <button id="btn-test-voice" class="voice-test-btn" title="Escuchar muestra de esta voz">
-          🔊 Probar Voz
-        </button>
-      </div>
-
-      <div class="voice-speed-group">
-        <label for="voice-speed-select" class="voice-bar-label">⏱️ Velocidad:</label>
-        <select id="voice-speed-select" class="speed-dropdown" title="Velocidad de habla">
-          <option value="0.8">0.8x (Pausada para niños)</option>
-          <option value="0.9" selected>0.9x (Recomendada / Clara)</option>
-          <option value="1.0">1.0x (Normal)</option>
-          <option value="1.15">1.15x (Rápida)</option>
-        </select>
-      </div>
+<!-- ======================= 1. INICIO DE SESION ======================= -->
+<section class="screen screen-blue" id="screen-login">
+  <!-- Horizontal -->
+  <div class="stage stage-land only-land">
+    <svg class="deco" width="844" height="390" aria-hidden="true">
+      <circle cx="70" cy="60" r="6" fill="#FFC83D"/>
+      <circle cx="770" cy="80" r="5" fill="#FFFFFF" opacity="0.6"/>
+      <circle cx="120" cy="300" r="4" fill="#FFFFFF" opacity="0.5"/>
+      <path d="M742 300 l6 14 l15 2 l-11 10 l3 15 l-13 -8 l-13 8 l3 -15 l-11 -10 l15 -2 z" fill="#FFC83D"/>
+      <path d="M92 158 l4 9 l10 1 l-7 7 l2 10 l-9 -5 l-9 5 l2 -10 l-7 -7 l10 -1 z" fill="#FFFFFF" opacity="0.7"/>
+      <ellipse cx="560" cy="470" rx="420" ry="190" fill="#3A55E6"/>
+    </svg>
+    <div class="login-text" style="left:56px;top:0;width:330px;height:390px;">
+      <div class="logo">TAP<span>it</span></div>
+      <h1>¡Hola, familia!</h1>
+      <p>Escribe tu código para empezar a jugar con las fichas.</p>
     </div>
-
-    <!-- =======================================================
-         SCREEN 0: ACCESO POR CÓDIGO (FAMILIAS)
-         ======================================================= -->
-    <section id="screen-login" class="screen active">
-      <div class="login-card">
-        <div class="login-icon">🔑</div>
-        <h2>Acceso Familiar</h2>
-        <p class="login-subtitle">Ingresa tu código de acceso para comenzar los ejercicios</p>
-
-        <form id="login-form" class="login-form" novalidate>
-          <label for="family-code-input" class="login-label">Código de familia</label>
-          <input
-            type="text"
-            id="family-code-input"
-            class="login-code-input"
-            placeholder="Ej: SOL-2026"
-            autocomplete="off"
-            autocapitalize="characters"
-            spellcheck="false"
-            required
-          >
-          <div id="login-error-msg" class="login-error-msg" role="alert" style="display: none;"></div>
-          <button type="submit" id="btn-login-submit" class="login-submit-btn">
-            Ingresar ▶
-          </button>
-        </form>
-      </div>
-    </section>
-
-    <!-- =======================================================
-         SCREEN 1: MENU PRINCIPAL
-         ======================================================= -->
-    <section id="screen-menu" class="screen">
-      <div class="tapit-wait">
-        <div id="install-hint" class="install-hint" style="display: none;">
-          <span>📲 Para usar TAPit como app: toca <b>Compartir</b> y luego <b>Agregar a inicio</b>.</span>
-          <button class="install-hint-close" onclick="closeInstallHint()" aria-label="Cerrar">✕</button>
-        </div>
-
-        <div class="tapit-wait-visual" aria-hidden="true">
-          <div class="tapit-device">
-            <div class="tapit-device-slot"></div>
-          </div>
-          <div class="tapit-card-anim">
-            <div class="tapit-card-line"></div>
-            <div class="tapit-card-line short"></div>
-          </div>
-        </div>
-
-        <h2 class="tapit-wait-title">Acerca una ficha a TAPit</h2>
-        <p class="tapit-wait-sub">La actividad aparecerá aquí automáticamente.</p>
-
-        <div id="device-status" class="device-status" data-state="unknown">
-          <span class="device-status-dot"></span>
-          <span id="device-status-label">Buscando TAPit...</span>
-        </div>
-        <p id="device-status-help" class="device-status-help" style="display: none;"></p>
-      </div>
-    </section>
-
-    <!-- =======================================================
-         SCREEN 2: ACTIVIDAD DE DISCRIMINACIÓN (PREGUNTAS)
-         ======================================================= -->
-    <section id="screen-activity" class="screen">
-      <div class="activity-card">
-        
-        <!-- Progress bar -->
-        <div class="progress-bar-container">
-          <span id="activity-step-text" class="progress-label">Paso 1 de 3</span>
-          <div class="progress-track">
-            <div id="activity-progress-fill" class="progress-fill"></div>
-          </div>
-        </div>
-
-        <!-- Accumulated sentence strip so far -->
-        <div class="sentence-accumulator">
-          <span class="accumulator-title">Oración en construcción:</span>
-          <div id="accumulator-container" class="accumulator-words">
-            <!-- Will be populated dynamically -->
-          </div>
-        </div>
-
-        <!-- Question prompt -->
-        <div class="question-prompt">
-          <h3 id="question-title">Elige la opción correcta</h3>
-          <p id="question-subtitle">Toca el pictograma correspondiente:</p>
-        </div>
-
-        <!-- Options: Two large square cards -->
-        <div id="options-grid" class="options-grid">
-          <!-- Populated dynamically with picto-option-card -->
-        </div>
-
-        <!-- Feedback message area -->
-        <div id="feedback-banner" class="feedback-banner"></div>
-
-      </div>
-    </section>
-
-    <!-- =======================================================
-         SCREEN 3: ORACIÓN COMPLETADA AUTOMÁTICAMENTE
-         ======================================================= -->
-    <section id="screen-complete" class="screen">
-      <div class="sentence-complete-view">
-        <div class="celebration-badge">🎉 ⭐ 🏆</div>
-        <h2>¡Excelente! ¡Oración Completa!</h2>
-        <p class="subtitle">Elegiste todas las palabras correctas. ¡Mira tu ficha TAPit!</p>
-
-        <!-- Full sentence strip with all pictograms -->
-        <div id="full-sentence-strip" class="full-sentence-strip">
-          <!-- Injected dynamically -->
-        </div>
-
-        <!-- Action buttons -->
-        <div class="sentence-actions">
-          <button id="btn-listen-sentence" class="action-btn btn-tts" onclick="speakCurrentSentence()">
-            🔊 Escuchar Oración
-          </button>
-          <button class="action-btn btn-advance-voice" onclick="goToMenu()">
-            ✨ Siguiente ficha ▶
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- =======================================================
-         SCREEN 4: GRABACIÓN Y MODULACIÓN DE VOZ
-         ======================================================= -->
-    <section id="screen-voice" class="screen">
-      <div class="voice-screen-card">
-        <div class="voice-header">
-          <h2>🎤 Práctica y Modulación de Voz</h2>
-          <p>Pronuncia cada una de las 3 palabras elegidas. Al acertar, podrás modular tu voz.</p>
-        </div>
-
-        <!-- Rows list for the 3 words -->
-        <div id="voice-rows-list" class="words-rows-list">
-          <!-- Populated dynamically with the 3 chosen words: NIÑA, COME, UNA -->
-        </div>
-
-        <div style="display: flex; justify-content: center; margin-top: 10px; gap: 14px; flex-wrap: wrap;">
-          <button id="btn-repeat-activity" class="nav-btn primary" onclick="startSentenceActivity(currentSentenceKey)">
-            🔄 Repetir Esta Oración
-          </button>
-          <button class="nav-btn" onclick="goToMenu()">
-            🏠 Volver al Menú Principal
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Empty Modal for Oraciones B & C -->
-    <div id="empty-modal" class="modal-overlay">
-      <div class="modal-content">
-        <div class="modal-icon">🃏</div>
-        <h3 id="modal-sentence-title">Esta ficha aún no está lista</h3>
-        <p id="modal-sentence-text">Prueba con otra ficha.</p>
-        <button class="modal-btn" onclick="closeEmptyModal()">Entendido</button>
-      </div>
+    <div class="mascot" style="left:430px;top:28px;">
+      <svg width="360" height="362" aria-hidden="true"><use href="#mascota-land"/></svg>
+      <form class="login-form" data-login style="top:178px;">
+        <label>Código de familia</label>
+        <input type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="20" placeholder="FAM1" aria-label="Código de familia">
+        <div class="login-error" role="alert"></div>
+        <button type="submit" class="btn-navy">¡Entrar! <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFC83D" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></button>
+      </form>
     </div>
-
-    <!-- App Footer with Attribution -->
-    <footer class="app-footer">
-      <p>Los símbolos pictográficos utilizados son propiedad del <strong>Gobierno de Aragón</strong> y han sido creados por Sergio Palao para <strong><a href="https://arasaac.org" target="_blank" rel="noopener">ARASAAC</a></strong> (distribuidos bajo licencia <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.es" target="_blank" rel="noopener">CC BY-NC-SA</a>).</p>
-    </footer>
   </div>
 
-  <!-- Supabase JS v2 (CDN sin bundler) -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- Configuración y helpers de Supabase -->
-  <script src="supabase-client.js"></script>
-  <!-- Main logic script -->
-  <script src="app.js"></script>
+  <!-- Vertical -->
+  <div class="stage stage-port only-port">
+    <svg class="deco" width="390" height="844" aria-hidden="true">
+      <circle cx="44" cy="96" r="6" fill="#FFC83D"/>
+      <circle cx="340" cy="70" r="5" fill="#FFFFFF" opacity="0.6"/>
+      <circle cx="350" cy="300" r="4" fill="#FFFFFF" opacity="0.5"/>
+      <path d="M318 250 l6 14 l15 2 l-11 10 l3 15 l-13 -8 l-13 8 l3 -15 l-11 -10 l15 -2 z" fill="#FFC83D"/>
+      <path d="M36 300 l4 9 l10 1 l-7 7 l2 10 l-9 -5 l-9 5 l2 -10 l-7 -7 l10 -1 z" fill="#FFFFFF" opacity="0.7"/>
+      <ellipse cx="195" cy="900" rx="330" ry="230" fill="#3A55E6"/>
+    </svg>
+    <div class="login-text center" style="left:32px;top:76px;width:326px;">
+      <div class="logo">TAP<span>it</span></div>
+      <h1 style="font-size:44px;">¡Hola, familia!</h1>
+      <p>Escribe tu código para empezar a jugar con las fichas.</p>
+    </div>
+    <div class="mascot" style="left:15px;top:360px;">
+      <svg width="360" height="430" aria-hidden="true"><use href="#mascota-port"/></svg>
+      <form class="login-form tall" data-login style="top:184px;">
+        <label>Código de familia</label>
+        <input type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="20" placeholder="FAM1" aria-label="Código de familia">
+        <div class="login-error" role="alert"></div>
+        <button type="submit" class="btn-navy">¡Entrar! <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFC83D" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 2. ESPERA DE FICHA ======================= -->
+<section class="screen screen-blue" id="screen-wait">
+  <div class="stage stage-land">
+    <svg class="deco" width="844" height="390" aria-hidden="true">
+      <circle class="ring r1" cx="250" cy="236" r="200" fill="#FFFFFF" opacity="0.05"/>
+      <circle class="ring r2" cx="250" cy="236" r="156" fill="#FFFFFF" opacity="0.07"/>
+      <circle class="ring r3" cx="250" cy="236" r="112" fill="#FFFFFF" opacity="0.10"/>
+      <path d="M60 90 l4 9 l10 1 l-7 7 l2 10 l-9 -5 l-9 5 l2 -10 l-7 -7 l10 -1 z" fill="#FFC83D"/>
+      <path d="M780 320 l5 11 l12 2 l-9 8 l2 12 l-10 -6 l-10 6 l2 -12 l-9 -8 l12 -2 z" fill="#FFC83D"/>
+      <circle cx="452" cy="110" r="5" fill="#FFFFFF" opacity="0.6"/>
+      <circle cx="96" cy="330" r="4" fill="#FFFFFF" opacity="0.6"/>
+    </svg>
+
+    <div class="topbar">
+      <div class="logo small">TAP<span>it</span></div>
+      <div class="topbar-right">
+        <div class="family-pill"><span class="family-initial" id="family-initial">F</span><span id="family-label">Familia</span></div>
+        <button type="button" class="icon-btn glass" id="btn-logout" aria-label="Salir">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="wait-art">
+      <svg width="280" height="260" aria-hidden="true">
+        <g class="ficha-float">
+          <g transform="rotate(-8 140 70)">
+            <rect x="84" y="20" width="116" height="90" rx="16" fill="#FFC83D"/>
+            <rect x="100" y="38" width="56" height="10" rx="5" fill="#FFFFFF" opacity="0.8"/>
+            <rect x="100" y="56" width="84" height="10" rx="5" fill="#FFFFFF" opacity="0.8"/>
+            <rect x="100" y="74" width="40" height="10" rx="5" fill="#FFFFFF" opacity="0.8"/>
+          </g>
+        </g>
+        <path d="M140 120 l0 18" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-dasharray="2 8"/>
+        <path d="M132 132 l8 9 l8 -9" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="20" y="156" width="240" height="86" rx="34" fill="#1E2A78"/>
+        <rect x="44" y="172" width="56" height="22" rx="11" fill="#FF7A59"/>
+        <rect x="112" y="172" width="56" height="22" rx="11" fill="#FF7A59"/>
+        <rect x="180" y="172" width="56" height="22" rx="11" fill="#FF7A59"/>
+        <rect x="70" y="210" width="140" height="10" rx="5" fill="#FFC83D"/>
+        <circle id="wait-led" cx="236" cy="222" r="5" fill="#2FCB8E"/>
+      </svg>
+    </div>
+
+    <div class="wait-text">
+      <h1>Acerca una ficha a TAPit</h1>
+      <p>La actividad aparecerá aquí sola.</p>
+      <div class="status-pill" id="device-status" data-state="unknown">
+        <span class="status-dot"></span><span id="device-status-label">Buscando TAPit...</span>
+      </div>
+      <div class="status-help" id="device-status-help"></div>
+    </div>
+
+    <div class="install-hint" id="install-hint">
+      <span>Para usarla como app: toca <b>Compartir</b> y luego <b>Agregar a inicio</b>.</span>
+      <button type="button" id="btn-install-close" aria-label="Cerrar">✕</button>
+    </div>
+
+    <div class="credit">Pictogramas: ARASAAC (CC BY-NC-SA)</div>
+  </div>
+</section>
+
+<!-- ======================= 3. ELEGIR MODO ======================= -->
+<section class="screen screen-room" id="screen-mode">
+  <div class="stage stage-land">
+    <svg class="deco room" width="844" height="390" aria-hidden="true">
+      <rect x="-2000" y="292" width="5000" height="2000" fill="#7B8DF7"/>
+      <path d="M30 292 v-150 q0 -60 60 -60 h40 q60 0 60 60 v150" fill="#9EADFF"/>
+      <rect x="680" y="96" width="120" height="84" rx="12" fill="none" stroke="#9EADFF" stroke-width="8"/>
+      <path d="M700 162 l22 -26 l18 18 l14 -12 l26 20" fill="none" stroke="#9EADFF" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M600 230 l4 9 l10 1 l-7 7 l2 10 l-9 -5 l-9 5 l2 -10 l-7 -7 l10 -1 z" fill="#FFC83D"/>
+      <ellipse cx="422" cy="300" rx="320" ry="30" fill="#6C7FF0"/>
+    </svg>
+
+    <button type="button" class="icon-btn white" id="btn-mode-back" aria-label="Cambiar de ficha" style="left:20px;top:18px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1E2A78" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+
+    <div class="ribbon-row" style="top:18px;"><div class="ribbon">¿Qué practicamos hoy?</div></div>
+
+    <div class="mode-cards">
+      <button type="button" class="mode-card coral" data-mode="numero">
+        <svg width="150" height="66" viewBox="0 0 150 66" aria-hidden="true">
+          <circle cx="28" cy="38" r="20" fill="#FF7A59"/><path d="M28 18 q4 -8 10 -8" fill="none" stroke="#2FCB8E" stroke-width="4" stroke-linecap="round"/>
+          <path d="M58 38 h16 m-6 -6 l6 6 -6 6" fill="none" stroke="#1E2A78" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="98" cy="42" r="16" fill="#FF7A59"/><circle cx="122" cy="42" r="16" fill="#FF7A59"/><circle cx="110" cy="24" r="16" fill="#FF9A7E"/>
+        </svg>
+        <span class="mode-title">Número</span>
+        <span class="mode-sub" id="mode-sub-numero">uno o varios</span>
+      </button>
+      <button type="button" class="mode-card mint" data-mode="genero">
+        <svg width="150" height="66" viewBox="0 0 150 66" aria-hidden="true">
+          <circle cx="18" cy="36" r="9" fill="#F2B21F"/><circle cx="58" cy="36" r="9" fill="#F2B21F"/><circle cx="38" cy="38" r="18" fill="#FFD9B8"/><path d="M20 36 q1 -20 18 -20 q17 0 18 20 q-8 -10 -18 -10 q-10 0 -18 10z" fill="#FFC83D"/>
+          <circle cx="84" cy="38" r="18" fill="#FFD9B8"/><path d="M66 34 q2 -18 18 -18 q16 0 18 18 q-6 -5 -11 -6 l-3 -4 l-4 4 q-10 0 -18 6z" fill="#8B5A3C"/>
+          <rect x="110" y="8" width="38" height="30" rx="10" fill="#FFC83D"/><path d="M118 38 l-4 8 l10 -8" fill="#FFC83D"/>
+          <text x="129" y="30" text-anchor="middle" font-family="Fredoka, sans-serif" font-weight="700" font-size="20" fill="#1E2A78">¿!</text>
+        </svg>
+        <span class="mode-title">Género</span>
+        <span class="mode-sub" id="mode-sub-genero">él o ella</span>
+      </button>
+    </div>
+
+    <div class="strip-row" style="bottom:22px;">
+      <div class="strip" id="mode-strip"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 4. ACTIVIDAD ======================= -->
+<section class="screen screen-room" id="screen-activity">
+  <div class="stage stage-land">
+    <svg class="deco room" width="844" height="390" aria-hidden="true">
+      <rect x="-2000" y="292" width="5000" height="2000" fill="#7B8DF7"/>
+      <path d="M60 292 v-150 q0 -60 60 -60 h40 q60 0 60 60 v150" fill="#9EADFF"/>
+      <rect x="640" y="96" width="120" height="84" rx="12" fill="none" stroke="#9EADFF" stroke-width="8"/>
+      <path d="M660 162 l22 -26 l18 18 l14 -12 l26 20" fill="none" stroke="#9EADFF" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M770 292 v-34 h40 v34" fill="#9EADFF"/>
+      <circle cx="790" cy="236" r="22" fill="#9EADFF"/>
+      <path d="M44 100 l4 9 l10 1 l-7 7 l2 10 l-9 -5 l-9 5 l2 -10 l-7 -7 l10 -1 z" fill="#FFFFFF" opacity="0.7"/>
+      <path d="M600 214 l4 9 l10 1 l-7 7 l2 10 l-9 -5 l-9 5 l2 -10 l-7 -7 l10 -1 z" fill="#FFC83D"/>
+      <ellipse cx="422" cy="300" rx="300" ry="30" fill="#6C7FF0"/>
+    </svg>
+
+    <button type="button" class="icon-btn white" id="btn-pause" aria-label="Pausa" style="left:20px;top:18px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="#1E2A78"><rect x="6" y="5" width="4" height="14" rx="1.5"/><rect x="14" y="5" width="4" height="14" rx="1.5"/></svg>
+    </button>
+
+    <div class="stars-pill" id="stars-pill" aria-label="Paso 1 de 3"></div>
+
+    <div class="ribbon-row" style="top:18px;"><div class="ribbon" id="activity-question">¿Cuál va aquí?</div></div>
+
+    <div class="options" id="options"></div>
+
+    <div class="strip-row" style="bottom:14px;">
+      <div class="strip" id="activity-strip"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 5. FICHA COMPLETA ======================= -->
+<section class="screen screen-room" id="screen-done">
+  <div class="stage stage-land">
+    <svg class="deco room" width="844" height="390" aria-hidden="true">
+      <rect x="-2000" y="292" width="5000" height="2000" fill="#7B8DF7"/>
+      <rect x="660" y="96" width="120" height="84" rx="12" fill="none" stroke="#9EADFF" stroke-width="8"/>
+      <path d="M680 162 l22 -26 l18 18 l14 -12 l26 20" fill="none" stroke="#9EADFF" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M780 292 v-34 h40 v34" fill="#9EADFF"/>
+      <circle cx="800" cy="236" r="22" fill="#9EADFF"/>
+      <ellipse cx="300" cy="318" rx="270" ry="26" fill="#6C7FF0"/>
+      <g opacity="0.55" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round">
+        <path d="M300 40 v-20"/><path d="M210 60 l-14 -14"/><path d="M390 60 l14 -14"/>
+      </g>
+      <rect x="60" y="40" width="10" height="16" rx="3" fill="#FFC83D" transform="rotate(25 65 48)"/>
+      <rect x="540" y="60" width="10" height="16" rx="3" fill="#2FCB8E" transform="rotate(-30 545 68)"/>
+      <rect x="590" y="250" width="10" height="16" rx="3" fill="#FF7A59" transform="rotate(30 595 258)"/>
+      <circle cx="40" cy="250" r="6" fill="#FFFFFF"/>
+    </svg>
+
+    <div class="done-card">
+      <div class="done-chips" id="done-chips"></div>
+      <div class="done-row">
+        <span class="done-sentence" id="done-sentence"></span>
+        <button type="button" class="icon-btn blue" id="btn-listen" aria-label="Escuchar la oración">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M7 4.5v15l13-7.5z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="done-badge" aria-label="3 de 3">
+      <svg width="44" height="44" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z" fill="#FFC83D"/></svg>
+      <span>3 / 3</span>
+    </div>
+
+    <div class="done-text">
+      <h1 id="done-title">¡Excelente!</h1>
+      <p>Armaste la oración completa.</p>
+      <button type="button" class="btn-yellow" id="btn-next">Siguiente ficha
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1E2A78" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= AVISOS ======================= -->
+<div class="rotate-overlay" id="rotate-overlay">
+  <svg width="120" height="120" viewBox="0 0 120 120" aria-hidden="true">
+    <rect class="rot-phone" x="38" y="16" width="44" height="88" rx="10" fill="none" stroke="#FFFFFF" stroke-width="6"/>
+    <path d="M18 78 a46 46 0 0 1 8 -44" fill="none" stroke="#FFC83D" stroke-width="6" stroke-linecap="round"/>
+    <path d="M16 40 l10 -8 l4 12" fill="none" stroke="#FFC83D" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <p>Gira el teléfono</p>
+</div>
+
+<div class="modal" id="modal" aria-hidden="true">
+  <div class="modal-card">
+    <h2 id="modal-title"></h2>
+    <p id="modal-text"></p>
+    <div class="modal-actions" id="modal-actions"></div>
+  </div>
+</div>
+
+<canvas id="confetti-canvas"></canvas>
+
+<!-- Dibujo de la mascota (se reutiliza en horizontal y vertical) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <g id="mascota-cara">
+      <rect x="96" y="24" width="168" height="36" rx="18" fill="#1E2A78"/>
+      <rect class="tapa t1" x="114" y="34" width="38" height="14" rx="7" fill="#FF7A59"/>
+      <rect class="tapa t2" x="161" y="34" width="38" height="14" rx="7" fill="#FF7A59"/>
+      <rect class="tapa t3" x="208" y="34" width="38" height="14" rx="7" fill="#FF7A59"/>
+      <circle cx="140" cy="112" r="24" fill="#FFFFFF"/>
+      <circle cx="220" cy="112" r="24" fill="#FFFFFF"/>
+      <circle cx="146" cy="116" r="10" fill="#1E2A78"/>
+      <circle cx="226" cy="116" r="10" fill="#1E2A78"/>
+      <circle cx="150" cy="111" r="3.5" fill="#FFFFFF"/>
+      <circle cx="230" cy="111" r="3.5" fill="#FFFFFF"/>
+      <ellipse cx="104" cy="148" rx="14" ry="9" fill="#FF7A59" opacity="0.55"/>
+      <ellipse cx="256" cy="148" rx="14" ry="9" fill="#FF7A59" opacity="0.55"/>
+      <path d="M160 150 q20 16 40 0" fill="none" stroke="#1E2A78" stroke-width="6" stroke-linecap="round"/>
+    </g>
+    <g id="mascota-land">
+      <rect x="34" y="46" width="292" height="330" rx="70" fill="#FFC83D" stroke="#F2B21F" stroke-width="6"/>
+      <use href="#mascota-cara"/>
+      <ellipse cx="38" cy="268" rx="30" ry="22" fill="#FFC83D" stroke="#F2B21F" stroke-width="6"/>
+      <ellipse cx="322" cy="268" rx="30" ry="22" fill="#FFC83D" stroke="#F2B21F" stroke-width="6"/>
+    </g>
+    <g id="mascota-port">
+      <rect x="34" y="46" width="292" height="380" rx="70" fill="#FFC83D" stroke="#F2B21F" stroke-width="6"/>
+      <use href="#mascota-cara"/>
+      <ellipse cx="38" cy="276" rx="30" ry="22" fill="#FFC83D" stroke="#F2B21F" stroke-width="6"/>
+      <ellipse cx="322" cy="276" rx="30" ry="22" fill="#FFC83D" stroke="#F2B21F" stroke-width="6"/>
+    </g>
+  </defs>
+</svg>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-client.js"></script>
+<script src="fichas.js"></script>
+<script src="app.js"></script>
 </body>
 </html>

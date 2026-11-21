@@ -1,616 +1,345 @@
-/**
- * JUEGO DE ORACIONES Y ABSURDOS CON PICTOGRAMAS DE ARASAAC
- * Incluye discriminación visual, reconocimiento de voz y modulación de audio (chillona / gruesa).
- */
+/* =====================================================================
+   TAPit · app de la familia
+   Flujo: código de familia → "Acerca una ficha" → ¿Número o Género? →
+   3 tapas (2 opciones cada una) → ¡Ficha completa!
+   Todo se registra en Supabase (supabase-client.js) y el aparato recibe
+   las órdenes start / open n / finish.
+   ===================================================================== */
 
-// ============================================================================
-// CONFIGURACIÓN DE ORACIONES Y PICTOGRAMAS ARASAAC
-// ============================================================================
-const SENTENCES_DATA = {
-  A: {
-    id: 'A',
-    name: 'ORACIÓN A',
-    sentenceText: 'La niña come una sopa',
-    // Título / Estado inicial
-    initialContext: {
-      title: 'LA',
-      words: [{ word: 'LA', pictoId: 8476 }]
-    },
-    // Pasos de preguntas (absurdos y discriminación)
-    steps: [
-      {
-        stepIndex: 1,
-        prompt: '¿Quién? Elige la opción correcta:',
-        options: [
-          { word: 'NIÑA', pictoId: 2484, isCorrect: true },
-          { word: 'NIÑO', pictoId: 2485, isCorrect: false }
-        ]
-      },
-      {
-        stepIndex: 2,
-        prompt: '¿Qué hace? Elige la acción correcta:',
-        options: [
-          { word: 'COME', pictoId: 2349, isCorrect: true },
-          { word: 'COMEN', pictoId: 5970, isCorrect: false }
-        ]
-      },
-      {
-        stepIndex: 3,
-        prompt: '¿Cuánto o cuál? Elige la opción correcta:',
-        options: [
-          { word: 'UNAS', pictoId: 8475, isCorrect: false },
-          { word: 'UNA', pictoId: 8474, isCorrect: true }
-        ]
-      }
-    ],
-    // Al finalizar se complementa automáticamente con "SOPA"
-    autoComplete: { word: 'SOPA', pictoId: 2573 },
-    // Palabras para la práctica y modulación de voz (las 3 palabras correctas elegidas)
-    voiceWords: [
-      { id: 'word-1', word: 'NIÑA', pictoId: 2484, matchTerms: ['niña', 'nina', 'la niña', 'chica'] },
-      { id: 'word-2', word: 'COME', pictoId: 2349, matchTerms: ['come', 'comer', 'comiendo'] },
-      { id: 'word-3', word: 'UNA', pictoId: 8474, matchTerms: ['una', 'uno', 'la una', 'un'] }
-    ]
-  },
-  B: {
-    id: 'B',
-    name: 'ORACIÓN B',
-    sentenceText: 'La chica lava los platos',
-    // Título / Estado inicial
-    initialContext: {
-      title: 'LA',
-      words: [{ word: 'LA', pictoId: 8476 }]
-    },
-    // Pasos de preguntas (absurdos y discriminación)
-    steps: [
-      {
-        stepIndex: 1,
-        prompt: '¿Quién realiza la acción? Elige la opción correcta:',
-        options: [
-          { word: 'CHICA', pictoId: 2484, isCorrect: true },
-          { word: 'CHICAS', pictoId: 6974, isCorrect: false }
-        ]
-      },
-      {
-        stepIndex: 2,
-        prompt: '¿Qué hace? Elige la acción correcta:',
-        options: [
-          { word: 'LAVA', pictoId: 8617, isCorrect: true },
-          { word: 'COCINA', pictoId: 2342, isCorrect: false }
-        ]
-      },
-      {
-        stepIndex: 3,
-        prompt: '¿Qué artículo corresponde? Elige:',
-        options: [
-          { word: 'LOS', pictoId: 8477, isCorrect: true },
-          { word: 'LAS', pictoId: 7031, isCorrect: false }
-        ]
-      }
-    ],
-    // Al finalizar se complementa automáticamente con "PLATOS"
-    autoComplete: { word: 'PLATOS', pictoId: 2532 },
-    // Palabras para la práctica y modulación de voz (las 3 palabras correctas elegidas)
-    voiceWords: [
-      { id: 'b-word-1', word: 'CHICA', pictoId: 2484, matchTerms: ['chica', 'la chica', 'niña', 'la niña'] },
-      { id: 'b-word-2', word: 'LAVA', pictoId: 8617, matchTerms: ['lava', 'lavar', 'lavando', 'fregar'] },
-      { id: 'b-word-3', word: 'LOS', pictoId: 8477, matchTerms: ['los', 'el'] }
-    ]
-  },
-  C: {
-    id: 'C',
-    name: 'ORACIÓN C',
-    sentenceText: 'La mamá lee un libro',
-    // Título / Estado inicial
-    initialContext: {
-      title: 'LA',
-      words: [{ word: 'LA', pictoId: 8476 }]
-    },
-    // Pasos de preguntas (absurdos y discriminación)
-    steps: [
-      {
-        stepIndex: 1,
-        prompt: '¿Quién realiza la acción? Elige la opción correcta:',
-        options: [
-          { word: 'MAMÁ', pictoId: 2458, isCorrect: true },
-          { word: 'PAPÁ', pictoId: 31146, isCorrect: false }
-        ]
-      },
-      {
-        stepIndex: 2,
-        prompt: '¿Qué hace? Elige la acción correcta:',
-        options: [
-          { word: 'LEE', pictoId: 7141, isCorrect: true },
-          { word: 'LEEN', pictoId: 39762, isCorrect: false }
-        ]
-      },
-      {
-        stepIndex: 3,
-        prompt: '¿Cuánto o cuál? Elige la opción correcta:',
-        options: [
-          { word: 'UN', pictoId: 8474, isCorrect: true },
-          { word: 'UNA', pictoId: 8476, isCorrect: false }
-        ]
-      }
-    ],
-    // Al finalizar se complementa automáticamente con "LIBRO"
-    autoComplete: { word: 'LIBRO', pictoId: 2450 },
-    // Palabras para la práctica y modulación de voz (las 3 palabras correctas elegidas)
-    voiceWords: [
-      { id: 'c-word-1', word: 'MAMÁ', pictoId: 2458, matchTerms: ['mama', 'mamá', 'la mama', 'la mamá', 'madre'] },
-      { id: 'c-word-2', word: 'LEE', pictoId: 7141, matchTerms: ['lee', 'leer', 'leyendo'] },
-      { id: 'c-word-3', word: 'UN', pictoId: 8474, matchTerms: ['un', 'uno', 'el'] }
-    ]
-  }
-};
-
-// ============================================================================
-// CONFIGURACIÓN DE CATEGORÍAS (PUNTO DE ENGANCHE FUTURO)
-// ============================================================================
-const SENTENCE_CATEGORIES = [
-  { id: 'categoria_1', label: 'Categoría 1' }, // Reemplazar con nombres reales
-  { id: 'categoria_2', label: 'Categoría 2' },
-  { id: 'categoria_3', label: 'Categoría 3' }
-];
-
-// ============================================================================
-// ESTADO DE LA APLICACIÓN Y SESIÓN FAMILIAR
-// ============================================================================
-const SESSION_STORAGE_KEY = 'arasaac_family_session';
-
-// TAPit: nombre del producto (cambiarlo aqui tambien lo cambia en los textos de la app)
 const APP_NAME = 'TAPit';
-const APP_SESSION_STORAGE_KEY = 'tapit_app_session';   // { id, lastActivityMs }
-const APP_SESSION_TIMEOUT_MS = 10 * 60 * 1000;         // 10 min sin uso = nueva sesion
-const DEVICE_POLL_MS = 800;                            // cada cuanto se pregunta por fichas nuevas
+const SESSION_STORAGE_KEY = 'arasaac_family_session';     // { family_id, family_label, login_session_id }
+const APP_SESSION_STORAGE_KEY = 'tapit_app_session';      // { id, familyId, lastActivityMs }
+const PICTO_CACHE_KEY = 'tapit_pictos_v1';
+const APP_SESSION_TIMEOUT_MS = 10 * 60 * 1000;            // 10 min sin uso = nueva sesión
+const DEVICE_POLL_MS = 800;
+const ABSURDO_PROBABILIDAD = 1 / 3;                       // 1 de cada 3 actividades
+
+let currentFamilySession = null;
 let currentAppSessionId = null;
+let lastSessionTouchMs = 0;
 let devicePollTimer = null;
 let devicePollBusy = false;
 let lastDeviceEventId = null;
-let lastSessionTouchMs = 0;
+let lastDeviceRes = null;
 
-let currentFamilySession = null; // { family_id, family_label, login_session_id }
-let currentAttemptState = null;
+let pendingCard = null;     // ficha leída, esperando que se elija el modo: { key, cardUid }
+let game = null;            // actividad en curso
 
-let currentSentenceKey = 'A';
-let currentStepIndex = 0;
-let accumulatedWords = [];
-let currentAudioContext = null;
-let activeAudioSource = null;
+/* ===================================================================
+   ESCALA DE PANTALLA (diseño 844×390 que llena cualquier pantalla)
+   =================================================================== */
+function fitStage() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const portrait = h > w;
+  document.body.classList.toggle('portrait', portrait);
+  const root = document.documentElement.style;
+  root.setProperty('--s', Math.min(w / 844, h / 390).toFixed(4));
+  root.setProperty('--sp', Math.min(w / 390, h / 844).toFixed(4));
+}
+window.addEventListener('resize', fitStage);
+window.addEventListener('orientationchange', () => setTimeout(fitStage, 200));
 
-// Grabaciones de voz guardadas: { [wordId]: { blob, audioBuffer, isValidated } }
-const voiceRecordings = {};
-
-// ============================================================================
-// SISTEMA DE AUDIO SINTETIZADO (Web Audio API)
-// ============================================================================
-function getAudioContext() {
-  if (!currentAudioContext) {
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    currentAudioContext = new AudioContextClass();
-  }
-  if (currentAudioContext.state === 'suspended') {
-    currentAudioContext.resume();
-  }
-  return currentAudioContext;
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
+  const el = document.getElementById('screen-' + name);
+  if (el) el.classList.add('active');
+  document.body.dataset.screen = name;
 }
 
-// Sonido de Acierto (Campanita brillante)
-function playCorrectSound() {
+function currentScreen() {
+  return document.body.dataset.screen;
+}
+
+/* ===================================================================
+   SONIDOS, VOZ Y CONFETI
+   =================================================================== */
+let audioCtx = null;
+function getAudioContext() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function playNotes(notes, type = 'triangle', volume = 0.25) {
   try {
     const ctx = getAudioContext();
-    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
-    notes.forEach((freq, idx) => {
+    let t = ctx.currentTime + 0.02;
+    notes.forEach(([freq, dur, gap]) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      const startTime = ctx.currentTime + (idx * 0.08);
-
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(freq, startTime);
-
-      gain.gain.setValueAtTime(0, startTime);
-      gain.gain.linearRampToValueAtTime(0.25, startTime + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.35);
-
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(volume, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
       osc.connect(gain);
       gain.connect(ctx.destination);
-
-      osc.start(startTime);
-      osc.stop(startTime + 0.4);
+      osc.start(t);
+      osc.stop(t + dur + 0.05);
+      t += gap === undefined ? dur : gap;
     });
-  } catch (e) {
-    console.warn('Audio feedback error', e);
-  }
+  } catch (e) { /* sin audio */ }
 }
-
-// Sonido de Error ("Boing" suave / Oops)
+const playCorrectSound = () => playNotes([[523.25, 0.3, 0.08], [659.25, 0.3, 0.08], [783.99, 0.3, 0.08], [1046.5, 0.4]]);
+const playVictoryFanfare = () => playNotes([[523.25, 0.12, 0.16], [659.25, 0.12, 0.16], [783.99, 0.12, 0.16], [1046.5, 0.5]], 'sine', 0.3);
 function playErrorSound() {
   try {
     const ctx = getAudioContext();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     const now = ctx.currentTime;
-
     osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(220, now); // A3
-    osc.frequency.exponentialRampToValueAtTime(110, now + 0.3); // baja a A2
-
-    gain.gain.setValueAtTime(0.2, now);
+    osc.frequency.setValueAtTime(220, now);
+    osc.frequency.exponentialRampToValueAtTime(110, now + 0.3);
+    gain.gain.setValueAtTime(0.15, now);
     gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-
     osc.connect(gain);
     gain.connect(ctx.destination);
-
     osc.start(now);
     osc.stop(now + 0.35);
-  } catch (e) {
-    console.warn('Audio feedback error', e);
-  }
+  } catch (e) { /* sin audio */ }
 }
 
-// Fanfarria de victoria
-function playVictoryFanfare() {
-  try {
-    const ctx = getAudioContext();
-    const melody = [
-      { f: 523.25, d: 0.12 }, // Do
-      { f: 659.25, d: 0.12 }, // Mi
-      { f: 783.99, d: 0.12 }, // Sol
-      { f: 1046.50, d: 0.4 }  // Do alto
-    ];
-    let time = ctx.currentTime + 0.05;
-    melody.forEach((note) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(note.f, time);
-
-      gain.gain.setValueAtTime(0, time);
-      gain.gain.linearRampToValueAtTime(0.3, time + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, time + note.d);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start(time);
-      osc.stop(time + note.d);
-      time += note.d + 0.04;
-    });
-  } catch (e) {
-    console.warn('Fanfare error', e);
-  }
-}
-
-// ============================================================================
-// GESTOR DE VOCES (TTS), SELECCIÓN DE LECTOR Y VELOCIDAD
-// ============================================================================
-let availableVoices = [];
-let selectedVoice = null;
-let currentVoiceRate = 0.9; // Velocidad clara por defecto
-
-function initVoiceSelector() {
-  const voiceSelect = document.getElementById('voice-select');
-  const speedSelect = document.getElementById('voice-speed-select');
-  const testBtn = document.getElementById('btn-test-voice');
-
-  if (!('speechSynthesis' in window)) {
-    if (voiceSelect) {
-      voiceSelect.innerHTML = '<option value="">Síntesis de voz no disponible</option>';
-    }
-    return;
-  }
-
-  // Cargar velocidad guardada
-  const savedSpeed = localStorage.getItem('arasaac_voice_speed');
-  if (savedSpeed && speedSelect) {
-    speedSelect.value = savedSpeed;
-    currentVoiceRate = parseFloat(savedSpeed) || 0.9;
-  }
-
-  if (speedSelect) {
-    speedSelect.addEventListener('change', () => {
-      currentVoiceRate = parseFloat(speedSelect.value) || 0.9;
-      localStorage.setItem('arasaac_voice_speed', currentVoiceRate);
-    });
-  }
-
-  // Cargar opciones de voz
-  populateVoiceOptions();
-  if (window.speechSynthesis.onvoiceschanged !== undefined) {
-    window.speechSynthesis.onvoiceschanged = populateVoiceOptions;
-  }
-
-  if (voiceSelect) {
-    voiceSelect.addEventListener('change', () => {
-      const voiceUri = voiceSelect.value;
-      selectedVoice = availableVoices.find(v => (v.voiceURI || v.name) === voiceUri) || null;
-      if (selectedVoice) {
-        localStorage.setItem('arasaac_selected_voice', selectedVoice.voiceURI || selectedVoice.name);
-      }
-    });
-  }
-
-  if (testBtn) {
-    testBtn.addEventListener('click', () => {
-      speakText('¡Hola! Con esta voz leeré las oraciones y palabras del juego.');
-    });
-  }
-}
-
-function getVoiceQualityScore(voice) {
-  const name = ((voice.name || '') + ' ' + (voice.voiceURI || '')).toLowerCase();
-  // Priorizar voces naturales / neuronales modernas
-  if (name.includes('natural')) return 5;
-  if (name.includes('neural')) return 4;
-  if (name.includes('google')) return 3;
-  if (name.includes('online')) return 2;
-  if (name.includes('helena') || name.includes('sabina') || name.includes('dalia') || name.includes('jorge')) return 2;
-  return 1;
-}
-
-function populateVoiceOptions() {
-  const voiceSelect = document.getElementById('voice-select');
-  if (!voiceSelect) return;
-
-  availableVoices = window.speechSynthesis.getVoices();
-  if (!availableVoices || availableVoices.length === 0) return;
-
-  // Filtrar voces en español prioritariamente
-  const spanishVoices = availableVoices.filter(v => v.lang && v.lang.toLowerCase().startsWith('es'));
-  const otherVoices = availableVoices.filter(v => !v.lang || !v.lang.toLowerCase().startsWith('es'));
-
-  // Ordenar voces en español: poner primero las que son 'Natural', 'Neural', 'Google'
-  spanishVoices.sort((a, b) => getVoiceQualityScore(b) - getVoiceQualityScore(a));
-
-  voiceSelect.innerHTML = '';
-
-  // Grupo Voces en Español
-  if (spanishVoices.length > 0) {
-    const esGroup = document.createElement('optgroup');
-    esGroup.label = '🇪🇸 Voces en Español (Recomendadas)';
-
-    spanishVoices.forEach(voice => {
-      const opt = document.createElement('option');
-      opt.value = voice.voiceURI || voice.name;
-      const isNatural = getVoiceQualityScore(voice) >= 2;
-      const badge = isNatural ? '✨ ' : '';
-      opt.textContent = `${badge}${voice.name} (${voice.lang})`;
-      esGroup.appendChild(opt);
-    });
-    voiceSelect.appendChild(esGroup);
-  }
-
-  // Grupo otras voces
-  if (otherVoices.length > 0) {
-    const otherGroup = document.createElement('optgroup');
-    otherGroup.label = '🌐 Otras Voces del Sistema';
-    otherVoices.slice(0, 15).forEach(voice => {
-      const opt = document.createElement('option');
-      opt.value = voice.voiceURI || voice.name;
-      opt.textContent = `${voice.name} (${voice.lang})`;
-      otherGroup.appendChild(opt);
-    });
-    voiceSelect.appendChild(otherGroup);
-  }
-
-  // Recuperar selección guardada o elegir la mejor voz natural por defecto
-  const savedVoiceKey = localStorage.getItem('arasaac_selected_voice');
-  let chosen = null;
-
-  if (savedVoiceKey) {
-    chosen = availableVoices.find(v => (v.voiceURI || v.name) === savedVoiceKey);
-  }
-
-  if (!chosen && spanishVoices.length > 0) {
-    chosen = spanishVoices[0]; // La primera es la mejor según getVoiceQualityScore
-  } else if (!chosen) {
-    chosen = availableVoices[0];
-  }
-
-  if (chosen) {
-    selectedVoice = chosen;
-    voiceSelect.value = chosen.voiceURI || chosen.name;
-  }
-}
-
-// Síntesis de voz (Text-To-Speech) con voz y velocidad personalizadas
-function speakText(text, pitch = 1.05, rate = null) {
+let spanishVoice = null;
+function pickVoice() {
   if (!('speechSynthesis' in window)) return;
-  window.speechSynthesis.cancel();
-
-  const utterance = new SpeechSynthesisUtterance(text);
-
-  if (selectedVoice) {
-    utterance.voice = selectedVoice;
-    utterance.lang = selectedVoice.lang || 'es-ES';
-  } else {
-    utterance.lang = 'es-ES';
-  }
-
-  utterance.pitch = pitch;
-  utterance.rate = rate !== null ? rate : currentVoiceRate;
-
-  window.speechSynthesis.speak(utterance);
+  const voices = window.speechSynthesis.getVoices().filter((v) => (v.lang || '').toLowerCase().startsWith('es'));
+  const score = (v) => {
+    const n = ((v.name || '') + ' ' + (v.voiceURI || '')).toLowerCase();
+    let s = 0;
+    if (/natural|neural|premium|enhanced|mejorad/.test(n)) s += 5;
+    if (/paulina|m[oó]nica|google|sabina|dalia|helena/.test(n)) s += 3;
+    if (/es-(mx|us|419|pe)/i.test(v.lang)) s += 2;
+    if (v.localService) s += 1;
+    return s;
+  };
+  voices.sort((a, b) => score(b) - score(a));
+  spanishVoice = voices[0] || null;
+}
+if ('speechSynthesis' in window) {
+  pickVoice();
+  window.speechSynthesis.onvoiceschanged = pickVoice;
 }
 
-// ============================================================================
-// SISTEMA DE CONFETI CELEBRATORIO (Canvas Confetti puro)
-// ============================================================================
-const confettiCanvas = document.getElementById('confetti-canvas');
-let confettiCtx = null;
-let confettiParticles = [];
-let confettiAnimationId = null;
+function speak(text, rate = 0.85) {
+  if (!('speechSynthesis' in window) || !text) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = spanishVoice ? spanishVoice.lang : 'es-ES';
+  if (spanishVoice) u.voice = spanishVoice;
+  u.rate = rate;
+  u.pitch = 1.05;
+  window.speechSynthesis.speak(u);
+}
 
-function resizeConfettiCanvas() {
+function stopSpeaking() {
+  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+}
+
+const confettiCanvas = document.getElementById('confetti-canvas');
+let confettiParticles = [];
+let confettiRunning = false;
+function launchConfetti(count = 90) {
   if (!confettiCanvas) return;
   confettiCanvas.width = window.innerWidth;
   confettiCanvas.height = window.innerHeight;
-}
-window.addEventListener('resize', resizeConfettiCanvas);
-resizeConfettiCanvas();
-
-function triggerConfetti(duration = 2000, intensity = 60) {
-  if (!confettiCanvas) return;
-  confettiCtx = confettiCanvas.getContext('2d');
-  resizeConfettiCanvas();
-
-  const colors = ['#f43f5e', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
-  for (let i = 0; i < intensity; i++) {
+  const colors = ['#FFC83D', '#FF7A59', '#2FCB8E', '#FFFFFF', '#A99BFF', '#4965F5'];
+  for (let i = 0; i < count; i++) {
     confettiParticles.push({
-      x: window.innerWidth * (0.2 + Math.random() * 0.6),
-      y: window.innerHeight * 0.4,
-      size: Math.random() * 8 + 6,
+      x: window.innerWidth * (0.15 + Math.random() * 0.7),
+      y: window.innerHeight * 0.35,
+      w: Math.random() * 8 + 6, h: Math.random() * 6 + 8,
       color: colors[Math.floor(Math.random() * colors.length)],
-      vx: (Math.random() - 0.5) * 14,
-      vy: (Math.random() - 0.7) * 16,
-      rotation: Math.random() * 360,
-      vRot: (Math.random() - 0.5) * 10,
-      alpha: 1
+      vx: (Math.random() - 0.5) * 14, vy: -Math.random() * 15 - 3,
+      rot: Math.random() * 360, vr: (Math.random() - 0.5) * 12, a: 1
     });
   }
-
-  if (!confettiAnimationId) {
-    renderConfetti();
-  }
-
-  setTimeout(() => {
-    // Las partículas desaparecerán progresivamente
-  }, duration);
+  if (!confettiRunning) { confettiRunning = true; requestAnimationFrame(drawConfetti); }
 }
-
-function renderConfetti() {
-  if (!confettiCtx) return;
-  confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
-
+function drawConfetti() {
+  const ctx = confettiCanvas.getContext('2d');
+  ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
   for (let i = confettiParticles.length - 1; i >= 0; i--) {
     const p = confettiParticles[i];
-    p.x += p.vx;
-    p.y += p.vy;
-    p.vy += 0.35; // Gravedad
-    p.rotation += p.vRot;
-    p.alpha -= 0.008;
-
-    if (p.alpha <= 0 || p.y > confettiCanvas.height) {
-      confettiParticles.splice(i, 1);
-      continue;
-    }
-
-    confettiCtx.save();
-    confettiCtx.globalAlpha = Math.max(0, p.alpha);
-    confettiCtx.translate(p.x, p.y);
-    confettiCtx.rotate((p.rotation * Math.PI) / 180);
-    confettiCtx.fillStyle = p.color;
-    confettiCtx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
-    confettiCtx.restore();
+    p.x += p.vx; p.y += p.vy; p.vy += 0.35; p.vx *= 0.99; p.rot += p.vr; p.a -= 0.007;
+    if (p.a <= 0 || p.y > confettiCanvas.height + 20) { confettiParticles.splice(i, 1); continue; }
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, p.a);
+    ctx.translate(p.x, p.y);
+    ctx.rotate((p.rot * Math.PI) / 180);
+    ctx.fillStyle = p.color;
+    ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+    ctx.restore();
   }
-
-  if (confettiParticles.length > 0) {
-    confettiAnimationId = requestAnimationFrame(renderConfetti);
-  } else {
-    confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
-    confettiAnimationId = null;
-  }
+  if (confettiParticles.length) requestAnimationFrame(drawConfetti);
+  else { confettiRunning = false; ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height); }
 }
 
-// ============================================================================
-// SESIÓN FAMILIAR Y PANTALLA DE ACCESO (SCREEN 0)
-// ============================================================================
-function saveFamilySession(sessionData) {
-  currentFamilySession = sessionData;
-  try {
-    // TAPit: se recuerda en el telefono para no pedir el codigo cada vez
-    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessionData));
-  } catch (e) {
-    console.warn('No se pudo guardar sesión en localStorage:', e);
-  }
+/* ===================================================================
+   PICTOGRAMAS DE ARASAAC
+   =================================================================== */
+let pictoCache = {};
+try { pictoCache = JSON.parse(localStorage.getItem(PICTO_CACHE_KEY) || '{}'); } catch (e) { pictoCache = {}; }
+const pictoRequests = {};
+
+function savePictoCache() {
+  try { localStorage.setItem(PICTO_CACHE_KEY, JSON.stringify(pictoCache)); } catch (e) {}
 }
 
-function loadFamilySession() {
-  try {
-    const raw = localStorage.getItem(SESSION_STORAGE_KEY) || sessionStorage.getItem(SESSION_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (parsed && parsed.family_id) {
-      return parsed;
-    }
-  } catch (e) {
-    console.warn('Error leyendo sesión guardada:', e);
+async function searchArasaac(text) {
+  const base = 'https://api.arasaac.org/api/pictograms/es/';
+  for (const kind of ['bestsearch', 'search']) {
+    try {
+      const res = await fetch(base + kind + '/' + encodeURIComponent(text.toLowerCase()));
+      if (!res.ok) continue;
+      const list = await res.json();
+      if (Array.isArray(list) && list.length && list[0]._id) return list[0]._id;
+    } catch (e) { /* sin internet o bloqueado */ }
   }
   return null;
 }
 
+// Devuelve (promesa) el número de pictograma de una palabra, o null
+function getPictoId(word) {
+  if (!word) return Promise.resolve(null);
+  if (PICTOS[word]) return Promise.resolve(PICTOS[word]);
+  const cached = pictoCache[word];
+  if (cached && cached.id) return Promise.resolve(cached.id);
+  if (cached && !cached.id && Date.now() - cached.t < 24 * 3600 * 1000) return Promise.resolve(null);
+  if (!pictoRequests[word]) {
+    pictoRequests[word] = searchArasaac(PICTOS_BUSCAR[word] || word).then((id) => {
+      pictoCache[word] = { id: id || 0, t: Date.now() };
+      savePictoCache();
+      delete pictoRequests[word];
+      return id;
+    });
+  }
+  return pictoRequests[word];
+}
+
+// Crea el recuadro del pictograma: primero muestra la inicial y luego la imagen
+function pictoElement(word, small = false) {
+  const box = document.createElement('div');
+  box.className = 'picto' + (small ? ' sm' : '');
+  const ph = document.createElement('div');
+  ph.className = 'ph';
+  ph.textContent = word.length <= 3 ? word : word.charAt(0);
+  box.appendChild(ph);
+  getPictoId(word).then((id) => {
+    if (!id) return;
+    const img = new Image();
+    img.alt = word;
+    img.draggable = false;
+    img.onload = () => { box.innerHTML = ''; box.appendChild(img); };
+    img.src = 'https://static.arasaac.org/pictograms/' + id + '/' + id + '_' + (small ? 300 : 500) + '.png';
+  });
+  return box;
+}
+
+function preloadPictos(ficha) {
+  const words = [ficha.inicio, ficha.final];
+  ficha.tapas.forEach((t) => words.push(t.palabra, t.numero, t.genero, t.absurdo));
+  words.filter(Boolean).forEach((w) => getPictoId(w));
+}
+
+/* ===================================================================
+   REGLAS DE LOS MODOS
+   Número: las 3 tapas con error de número. 1 de cada 3 veces, la tapa 1
+           o la 2 (al azar) usa su absurdo.
+   Género: tapa 1 y 3 con error de género, tapa 2 (verbo) siempre absurdo.
+           1 de cada 3 veces la tapa 1 usa su absurdo. Si una palabra no
+           tiene género, usa su absurdo.
+   =================================================================== */
+function buildPlan(ficha, mode) {
+  let tipos;
+  if (mode === 'numero') {
+    tipos = ['numero', 'numero', 'numero'];
+    if (Math.random() < ABSURDO_PROBABILIDAD) {
+      const conAbsurdo = [0, 1].filter((i) => ficha.tapas[i].absurdo);
+      if (conAbsurdo.length) tipos[conAbsurdo[Math.floor(Math.random() * conAbsurdo.length)]] = 'absurdo';
+    }
+  } else {
+    tipos = ['genero', 'absurdo', 'genero'];
+    if (Math.random() < ABSURDO_PROBABILIDAD) tipos[0] = 'absurdo';
+  }
+
+  return ficha.tapas.map((tapa, i) => {
+    let tipo = tipos[i];
+    if (!tapa[tipo]) tipo = ['absurdo', 'genero', 'numero'].find((t) => tapa[t]) || tipo;
+    return { index: i + 1, palabra: tapa.palabra, distractor: tapa[tipo], tipo };
+  });
+}
+
+function sentenceOf(ficha) {
+  const words = [ficha.inicio].concat(ficha.tapas.map((t) => t.palabra), [ficha.final]);
+  const text = words.join(' ').toLowerCase();
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/* ===================================================================
+   SESIÓN DE LA FAMILIA
+   =================================================================== */
+function loadFamilySession() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SESSION_STORAGE_KEY) || 'null');
+    return parsed && parsed.family_id ? parsed : null;
+  } catch (e) { return null; }
+}
+
+function saveFamilySession(data) {
+  currentFamilySession = data;
+  try { localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(data)); } catch (e) {}
+}
+
 function clearFamilySession() {
   currentFamilySession = null;
-  try {
-    sessionStorage.removeItem(SESSION_STORAGE_KEY);
-  } catch (e) {}
+  currentAppSessionId = null;
   try {
     localStorage.removeItem(SESSION_STORAGE_KEY);
     localStorage.removeItem(APP_SESSION_STORAGE_KEY);
   } catch (e) {}
-  currentAppSessionId = null;
   stopDevicePolling();
 }
 
-function updateHeaderForSession() {
-  const badge = document.getElementById('family-badge');
-  const badgeLabel = document.getElementById('family-badge-label');
-  const logoutBtn = document.getElementById('btn-logout');
-
-  if (currentFamilySession) {
-    if (badgeLabel) badgeLabel.textContent = currentFamilySession.family_label || 'Familia';
-    if (badge) badge.style.display = 'inline-flex';
-    if (logoutBtn) logoutBtn.style.display = 'inline-flex';
-  } else {
-    if (badge) badge.style.display = 'none';
-    if (logoutBtn) logoutBtn.style.display = 'none';
-  }
+function renderFamily() {
+  const label = (currentFamilySession && currentFamilySession.family_label) || 'Familia';
+  document.getElementById('family-label').textContent = label;
+  document.getElementById('family-initial').textContent = label.trim().charAt(0).toUpperCase() || 'F';
 }
 
-function showLoginError(message) {
-  const errorEl = document.getElementById('login-error-msg');
-  if (!errorEl) return;
-  if (message) {
-    errorEl.textContent = message;
-    errorEl.style.display = 'block';
-  } else {
-    errorEl.textContent = '';
-    errorEl.style.display = 'none';
-  }
+function setLoginError(msg) {
+  document.querySelectorAll('.login-error').forEach((el) => {
+    el.textContent = msg || '';
+    el.classList.toggle('show', Boolean(msg));
+  });
 }
 
 async function handleLoginSubmit(event) {
   event.preventDefault();
+  const form = event.currentTarget;
+  const input = form.querySelector('input');
+  const button = form.querySelector('button');
+  const code = input.value.trim().toUpperCase();
+  getAudioContext(); // desbloquea el audio en iPhone
 
-  const codeInput = document.getElementById('family-code-input');
-  const submitBtn = document.getElementById('btn-login-submit');
-  const rawCode = codeInput ? codeInput.value.trim().toUpperCase() : '';
-
-  if (!rawCode) {
-    showLoginError('Por favor, escribe tu código de familia.');
-    if (codeInput) codeInput.focus();
+  if (!code) {
+    setLoginError('Escribe tu código de familia.');
+    input.focus();
     return;
   }
+  setLoginError('');
+  button.disabled = true;
+  const original = button.innerHTML;
+  button.textContent = 'Revisando...';
 
-  showLoginError('');
-  if (submitBtn) {
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Verificando...';
-  }
-
-  const result = await verifyFamilyCode(rawCode);
-
-  if (submitBtn) {
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Ingresar ▶';
-  }
+  const result = await verifyFamilyCode(code);
+  button.disabled = false;
+  button.innerHTML = original;
 
   if (!result.ok) {
-    showLoginError(result.error || 'Código incorrecto.');
-    if (codeInput) {
-      codeInput.focus();
-      codeInput.select();
-    }
+    setLoginError(result.error || 'Ese código no existe.');
+    input.select();
     return;
   }
 
@@ -619,901 +348,46 @@ async function handleLoginSubmit(event) {
     family_label: result.family_label,
     login_session_id: result.login_session_id
   });
-
-  if (codeInput) codeInput.value = '';
-  updateHeaderForSession();
-  showScreen('screen-menu');
+  document.querySelectorAll('[data-login] input').forEach((el) => { el.value = ''; el.blur(); });
   onFamilyReady();
 }
 
-function logoutFamily() {
-  stopActiveRecording();
-  if ('speechSynthesis' in window) {
-    window.speechSynthesis.cancel();
-  }
-  abandonCurrentAttemptIfActive(false);
-  currentAttemptState = null;
+function askLogout() {
+  openModal({
+    title: '¿Cerrar sesión?',
+    text: 'Tendrás que escribir el código de familia otra vez.',
+    actions: [
+      { label: 'Cancelar', style: 'soft' },
+      { label: 'Salir', style: 'navy', onClick: logout }
+    ]
+  });
+}
 
+function logout() {
+  stopSpeaking();
+  abandonGame(false);
+  pendingCard = null;
   clearFamilySession();
-  updateHeaderForSession();
-  showLoginError('');
-  showScreen('screen-login');
-
-  const codeInput = document.getElementById('family-code-input');
-  if (codeInput) {
-    codeInput.value = '';
-    codeInput.focus();
-  }
+  setLoginError('');
+  showScreen('login');
 }
 
-function initLoginScreen() {
-  const loginForm = document.getElementById('login-form');
-  const logoutBtn = document.getElementById('btn-logout');
-
-  if (loginForm) {
-    loginForm.addEventListener('submit', handleLoginSubmit);
-  }
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', logoutFamily);
-  }
-
-  // Restaurar sesión en sessionStorage al recargar (F5) sin contar nuevo inicio de sesión
-  const existingSession = loadFamilySession();
-  if (existingSession) {
-    currentFamilySession = existingSession;
-    updateHeaderForSession();
-    showScreen('screen-menu');
-    onFamilyReady();
-  } else {
-    updateHeaderForSession();
-    showScreen('screen-login');
-    const codeInput = document.getElementById('family-code-input');
-    if (codeInput) codeInput.focus();
-  }
-}
-
-// ============================================================================
-// INSTRUMENTACIÓN DE INTENTOS EN SUPABASE
-// ============================================================================
-function beginAttemptTracking(sentenceKey, sentence, selectedCategory, cardUid = null) {
-  const voiceErrorsInit = {};
-  sentence.voiceWords.forEach((w) => {
-    voiceErrorsInit[w.id] = 0;
-  });
-
-  const attemptState = {
-    attemptId: null,
-    attemptPromise: null,
-    sentenceKey,
-    sentenceText: sentence.sentenceText,
-    selectedCategory: selectedCategory || null,
-    startedAtMs: Date.now(),
-    discriminationCompletedAtMs: null,
-    discriminationErrors: { 1: 0, 2: 0, 3: 0 },
-    voiceErrors: voiceErrorsInit,
-    savedParts: {},
-    status: 'in_progress'
-  };
-
-  currentAttemptState = attemptState;
-
-  if (currentFamilySession && typeof appStartAttempt === 'function') {
-    attemptState.attemptPromise = appStartAttempt({
-      familyId: currentFamilySession.family_id,
-      appSessionId: currentAppSessionId,
-      sentenceKey,
-      sentenceText: sentence.sentenceText,
-      cardUid
-    }).then((attemptId) => {
-      attemptState.attemptId = attemptId;
-      return attemptId;
-    });
-  } else {
-    attemptState.attemptPromise = Promise.resolve(null);
-  }
-}
-
-async function resolveAttemptId(attemptState) {
-  if (!attemptState) return null;
-  if (attemptState.attemptId) return attemptState.attemptId;
-  if (attemptState.attemptPromise) {
-    try {
-      return await attemptState.attemptPromise;
-    } catch (e) {
-      return null;
-    }
-  }
-  return null;
-}
-
-async function recordPartResult(partType, partIndex, targetWord, errorsCount, validationMethod = null) {
-  const attemptState = currentAttemptState;
-  if (!attemptState) return;
-
-  const partKey = `${partType}_${partIndex}`;
-  if (attemptState.savedParts[partKey]) return;
-  attemptState.savedParts[partKey] = true;
-
-  const attemptId = await resolveAttemptId(attemptState);
-  if (!attemptId || typeof savePartResult !== 'function') return;
-
-  await savePartResult({
-    attemptId,
-    partType,
-    partIndex,
-    targetWord,
-    errorsCount,
-    validationMethod
-  });
-}
-
-async function completeCurrentAttempt(attemptState, durationSeconds) {
-  if (!attemptState) return;
-  const attemptId = await resolveAttemptId(attemptState);
-  if (!attemptId || typeof completeExerciseAttempt !== 'function') return;
-
-  await completeExerciseAttempt(attemptId, durationSeconds);
-}
-
-function abandonCurrentAttemptIfActive(useKeepalive = false) {
-  const attemptState = currentAttemptState;
-  if (!attemptState || attemptState.status !== 'in_progress') return;
-
-  attemptState.status = 'abandoned';
-  const durationSeconds = Math.max(1, Math.round((Date.now() - attemptState.startedAtMs) / 1000));
-
-  if (useKeepalive) {
-    if (attemptState.attemptId && typeof abandonExerciseAttempt === 'function') {
-      abandonExerciseAttempt(attemptState.attemptId, durationSeconds, true);
-    }
-    return;
-  }
-
-  resolveAttemptId(attemptState).then((attemptId) => {
-    if (attemptId && typeof abandonExerciseAttempt === 'function') {
-      abandonExerciseAttempt(attemptId, durationSeconds, false);
-    }
-  });
-}
-
-window.addEventListener('pagehide', () => {
-  if (currentAttemptState && currentAttemptState.status === 'in_progress' && currentFamilySession) {
-    appSendCommandKeepalive(currentFamilySession.family_id, 'finish');
-  }
-  abandonCurrentAttemptIfActive(true);
-});
-
-// ============================================================================
-// NAVEGACIÓN ENTRE PANTALLAS
-// ============================================================================
-function showScreen(screenId) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  const target = document.getElementById(screenId);
-  if (target) target.classList.add('active');
-
-  const backBtn = document.getElementById('btn-back-menu');
-  if (backBtn) {
-    const showBack = screenId !== 'screen-menu' && screenId !== 'screen-login';
-    backBtn.style.display = showBack ? 'inline-flex' : 'none';
-  }
-
-  const voiceBar = document.querySelector('.voice-settings-bar');
-  if (voiceBar) {
-    voiceBar.style.display = screenId === 'screen-login' ? 'none' : 'flex';
-  }
-
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function goToMenu() {
-  if (!currentFamilySession) {
-    showScreen('screen-login');
-    return;
-  }
-
-  stopActiveRecording();
-  if ('speechSynthesis' in window) {
-    window.speechSynthesis.cancel();
-  }
-  if (currentAttemptState && currentAttemptState.status === 'in_progress') {
-    sendDeviceCommand('finish');
-  }
-  abandonCurrentAttemptIfActive(false);
-  currentAttemptState = null;
-
-  showScreen('screen-menu');
-  touchAppSession();
-}
-
-document.getElementById('btn-back-menu').addEventListener('click', goToMenu);
-
-// ============================================================================
-// MODAL PARA ORACIONES VACÍAS (B Y C)
-// ============================================================================
-function showEmptyModal(sentenceKey) {
-  const modal = document.getElementById('empty-modal');
-  const title = document.getElementById('modal-sentence-title');
-  if (title) title.textContent = `ORACIÓN ${sentenceKey} (En Construcción)`;
-  if (modal) modal.classList.add('active');
-}
-
-function closeEmptyModal() {
-  const modal = document.getElementById('empty-modal');
-  if (modal) modal.classList.remove('active');
-}
-
-// ============================================================================
-// INICIO Y SECUENCIA DE PREGUNTAS (ORACIÓN A, B, C)
-// ============================================================================
-function startSentenceActivity(sentenceKey, selectedCategory = null, cardUid = null) {
-  if (!currentFamilySession) {
-    showScreen('screen-login');
-    return;
-  }
-
-  const sentence = SENTENCES_DATA[sentenceKey];
-  if (!sentence) {
-    showEmptyModal(sentenceKey);
-    return;
-  }
-
-  // Si había un intento inconcluso (ej. al pulsar "Repetir"), marcarlo como abandonado
-  abandonCurrentAttemptIfActive(false);
-
-  // Detener grabaciones o audios previos y reiniciar estado de voz para esta oración
-  stopActiveRecording();
-  if (activeAudioSource) {
-    try { activeAudioSource.stop(); } catch (e) {}
-    activeAudioSource = null;
-  }
-  sentence.voiceWords.forEach((w) => {
-    delete voiceRecordings[w.id];
-  });
-
-  currentSentenceKey = sentenceKey;
-  currentStepIndex = 0;
-  // Inicializamos la oración con el título/palabra inicial: "LA"
-  accumulatedWords = [...sentence.initialContext.words];
-
-  // TAPit: el aparato entra en modo actividad (ignora otras fichas)
-  sendDeviceCommand('start');
-  touchAppSession();
-
-  // Iniciar registro del intento en Supabase y cronómetro
-  beginAttemptTracking(sentenceKey, sentence, selectedCategory, cardUid);
-
-  showScreen('screen-activity');
-  renderCurrentStep();
-  // Pronunciar inicio
-  speakText(sentence.initialContext.title);
-}
-
-function renderCurrentStep() {
-  const sentence = SENTENCES_DATA[currentSentenceKey];
-  const step = sentence.steps[currentStepIndex];
-  const totalSteps = sentence.steps.length;
-
-  // Actualizar progreso
-  const stepText = document.getElementById('activity-step-text');
-  const progressFill = document.getElementById('activity-progress-fill');
-  if (stepText) stepText.textContent = `Paso ${currentStepIndex + 1} de ${totalSteps}`;
-  if (progressFill) progressFill.style.width = `${((currentStepIndex + 1) / totalSteps) * 100}%`;
-
-  // Renderizar cinta acumulativa
-  renderAccumulatedSentence();
-
-  // Pregunta
-  const questionTitle = document.getElementById('question-title');
-  const questionSubtitle = document.getElementById('question-subtitle');
-  if (questionTitle) questionTitle.textContent = step.prompt;
-  if (questionSubtitle) questionSubtitle.textContent = 'Toca el pictograma correcto para continuar:';
-
-  // Limpiar mensaje de feedback
-  const feedback = document.getElementById('feedback-banner');
-  if (feedback) {
-    feedback.className = 'feedback-banner';
-    feedback.textContent = '';
-  }
-
-  // Renderizar opciones (los dos cuadrados con pictogramas)
-  const optionsGrid = document.getElementById('options-grid');
-  optionsGrid.innerHTML = '';
-
-  step.options.forEach((opt, idx) => {
-    const card = document.createElement('div');
-    card.className = 'picto-option-card';
-    card.setAttribute('role', 'button');
-    card.setAttribute('tabindex', '0');
-    card.dataset.index = idx;
-
-    card.innerHTML = `
-      <div class="picto-image-box">
-        <img src="https://static.arasaac.org/pictograms/${opt.pictoId}/${opt.pictoId}_500.png" 
-             alt="${opt.word}" 
-             onerror="this.src='https://api.arasaac.org/api/pictograms/${opt.pictoId}'">
-      </div>
-      <div class="picto-label">${opt.word}</div>
-      <div class="error-overlay">❌</div>
-      <div class="success-overlay">⭐</div>
-    `;
-
-    card.addEventListener('click', () => handleOptionSelection(card, opt));
-    optionsGrid.appendChild(card);
-  });
-}
-
-function renderAccumulatedSentence() {
-  const container = document.getElementById('accumulator-container');
-  if (!container) return;
-  container.innerHTML = '';
-
-  accumulatedWords.forEach(w => {
-    const tag = document.createElement('div');
-    tag.className = 'picto-tag';
-    tag.innerHTML = `
-      <img src="https://static.arasaac.org/pictograms/${w.pictoId}/${w.pictoId}_500.png" alt="${w.word}">
-      <span>${w.word}</span>
-    `;
-    container.appendChild(tag);
-  });
-
-  // Espacio pendiente
-  const placeholder = document.createElement('div');
-  placeholder.className = 'picto-tag placeholder';
-  placeholder.innerHTML = '<span>¿...?</span>';
-  container.appendChild(placeholder);
-}
-
-// Manejar la selección del usuario
-function handleOptionSelection(cardElement, option) {
-  const sentence = SENTENCES_DATA[currentSentenceKey];
-  const step = sentence.steps[currentStepIndex];
-  const feedback = document.getElementById('feedback-banner');
-
-  if (option.isCorrect) {
-    // CORRECTO:
-    // 1. Iluminación y celebración
-    cardElement.classList.remove('incorrect');
-    cardElement.classList.add('correct');
-
-    // TAPit: abrir la tapa de esta palabra (paso 1 -> tapa 1, etc.)
-    sendDeviceCommand('open', step.stepIndex);
-    touchAppSession();
-
-    playCorrectSound();
-    triggerConfetti(1200, 35);
-    speakText(`¡Muy bien! ${option.word}`);
-
-    if (feedback) {
-      feedback.className = 'feedback-banner success';
-      feedback.textContent = `¡Correcto! Es "${option.word}" ⭐`;
-    }
-
-    // Registrar paso de discriminación en Supabase
-    if (currentAttemptState) {
-      const stepErrors = currentAttemptState.discriminationErrors[step.stepIndex] || 0;
-      recordPartResult('discrimination_step', step.stepIndex, option.word, stepErrors, 'click');
-    }
-
-    // Agregar palabra elegida a la oración acumulada
-    accumulatedWords.push({ word: option.word, pictoId: option.pictoId });
-
-    // Deshabilitar clics adicionales temporalmente
-    const allCards = document.querySelectorAll('.picto-option-card');
-    allCards.forEach(c => c.style.pointerEvents = 'none');
-
-    setTimeout(() => {
-      currentStepIndex++;
-      if (currentStepIndex < sentence.steps.length) {
-        renderCurrentStep();
-      } else {
-        // Fin de los pasos: Completar automáticamente la oración
-        finishSentenceWithAutoCompletion();
-      }
-    }, 1200);
-
-  } else {
-    // INCORRECTO:
-    // 1. Mostrar X, iluminar en rojo, sonido boing, no avanza
-    if (currentAttemptState) {
-      currentAttemptState.discriminationErrors[step.stepIndex] =
-        (currentAttemptState.discriminationErrors[step.stepIndex] || 0) + 1;
-    }
-
-    cardElement.classList.add('incorrect');
-    playErrorSound();
-    speakText(`Esa no es. ¡Prueba otra vez!`);
-
-    if (feedback) {
-      feedback.className = 'feedback-banner error';
-      feedback.textContent = `¡Ups! Inténtalo de nuevo. ¿Cuál es la palabra correcta?`;
-    }
-
-    // Quitar la clase de error después de que termine la animación de sacudida
-    setTimeout(() => {
-      cardElement.classList.remove('incorrect');
-    }, 900);
-  }
-}
-
-// ============================================================================
-// COMPLEMENTACIÓN AUTOMÁTICA Y CELEBRACIÓN DE ORACIÓN COMPLETA
-// ============================================================================
-function finishSentenceWithAutoCompletion() {
-  const sentence = SENTENCES_DATA[currentSentenceKey];
-
-  // Mantener cronómetro total corriendo hasta completar screen-voice (Opción B)
-  if (currentAttemptState && currentAttemptState.status === 'in_progress') {
-    currentAttemptState.discriminationCompletedAtMs = Date.now();
-    currentAttemptState.status = 'completed';
-    const durationSeconds = Math.max(1, Math.round((Date.now() - currentAttemptState.startedAtMs) / 1000));
-    completeCurrentAttempt(currentAttemptState, durationSeconds);
-  }
-  sendDeviceCommand('finish');
-  touchAppSession();
-
-  // Complemento automático con "SOPA"
-  const autoWord = sentence.autoComplete;
-  accumulatedWords.push({ word: autoWord.word, pictoId: autoWord.pictoId, isAuto: true });
-
-  showScreen('screen-complete');
-  playVictoryFanfare();
-  triggerConfetti(3500, 80);
-
-  // Renderizar cinta completa con todos los pictogramas
-  const strip = document.getElementById('full-sentence-strip');
-  strip.innerHTML = '';
-
-  accumulatedWords.forEach(w => {
-    const card = document.createElement('div');
-    card.className = `sentence-picto-card ${w.isAuto ? 'auto-added' : ''}`;
-    card.innerHTML = `
-      <img src="https://static.arasaac.org/pictograms/${w.pictoId}/${w.pictoId}_500.png" alt="${w.word}">
-      <span class="word">${w.word}</span>
-      ${w.isAuto ? '<span class="auto-badge">Auto</span>' : ''}
-    `;
-    strip.appendChild(card);
-  });
-
-  // Leer la oración completa en voz alta
-  setTimeout(() => {
-    speakCurrentSentence();
-  }, 600);
-}
-
-function speakCurrentSentence() {
-  const sentence = SENTENCES_DATA[currentSentenceKey];
-  speakText(sentence.sentenceText);
-}
-
-// ============================================================================
-// PANTALLA DE GRABACIÓN Y MODULACIÓN DE VOZ (3 PALABRAS)
-// ============================================================================
-function goToVoicePractice() {
-  showScreen('screen-voice');
-  renderVoicePracticeRows();
-}
-
-function renderVoicePracticeRows() {
-  const sentence = SENTENCES_DATA[currentSentenceKey];
-  const list = document.getElementById('voice-rows-list');
-  list.innerHTML = '';
-
-  sentence.voiceWords.forEach((item, idx) => {
-    const existingRec = voiceRecordings[item.id];
-    const isReady = existingRec && existingRec.isValidated;
-
-    const row = document.createElement('div');
-    row.className = `word-voice-row ${isReady ? 'recorded-success' : ''}`;
-    row.id = `row-${item.id}`;
-
-    row.innerHTML = `
-      <!-- Pictograma e info de la palabra -->
-      <div class="row-word-info">
-        <img class="row-picto-img" 
-             src="https://static.arasaac.org/pictograms/${item.pictoId}/${item.pictoId}_500.png" 
-             alt="${item.word}">
-        <div class="row-text">
-          <span class="word-title">${item.word}</span>
-          <button class="listen-word-btn" onclick="speakText('${item.word}')">
-            🔊 Escuchar modelo
-          </button>
-        </div>
-      </div>
-
-      <!-- Grabación y validación por voz -->
-      <div class="row-mic-section">
-        <button id="btn-rec-${item.id}" class="btn-record" onclick="toggleVoiceRecording('${item.id}', '${item.word}')">
-          🎙️ Grabar Voz
-        </button>
-        <span id="status-${item.id}" class="record-status-text ${isReady ? 'ok' : ''}">
-          ${isReady ? '✅ ¡Palabra correcta y guardada!' : 'Presiona para grabar'}
-        </span>
-        <button id="btn-approve-${item.id}" class="btn-manual-approve" style="display: none;" onclick="manualApproveWord('${item.id}')">
-          👍 Aprobar pronunciación manualmente
-        </button>
-      </div>
-
-      <!-- Controles de modulación y replay -->
-      <div class="row-playback-section">
-        <div class="playback-controls">
-          <button id="btn-play-normal-${item.id}" 
-                  class="playback-btn btn-replay-normal" 
-                  ${!isReady ? 'disabled' : ''} 
-                  onclick="playRecordedAudioEffect('${item.id}', 'normal')">
-            🔁 Escuchar Normal
-          </button>
-          
-          <button id="btn-play-squeaky-${item.id}" 
-                  class="playback-btn btn-squeaky" 
-                  ${!isReady ? 'disabled' : ''} 
-                  onclick="playRecordedAudioEffect('${item.id}', 'squeaky')"
-                  title="Efecto de ardilla / chillona">
-            🐿️ Voz Chillona
-          </button>
-          
-          <button id="btn-play-deep-${item.id}" 
-                  class="playback-btn btn-deep" 
-                  ${!isReady ? 'disabled' : ''} 
-                  onclick="playRecordedAudioEffect('${item.id}', 'deep')"
-                  title="Efecto monstruo / gruesa">
-            🐻 Voz Gruesa
-          </button>
-        </div>
-      </div>
-    `;
-
-    list.appendChild(row);
-  });
-
-  const repeatBtn = document.getElementById('btn-repeat-activity');
-  if (repeatBtn) {
-    repeatBtn.textContent = `🔄 Repetir Juego (${sentence.name})`;
-  }
-}
-
-// ============================================================================
-// GRABACIÓN DE AUDIO (MediaRecorder) Y RECONOCIMIENTO (SpeechRecognition)
-// ============================================================================
-let activeMediaRecorder = null;
-let activeRecordingId = null;
-let activeSpeechRecognizer = null;
-let recordedAudioChunks = [];
-
-function toggleVoiceRecording(wordId, targetWord) {
-  var recBtn = document.getElementById('btn-rec-' + wordId);
-  var statusLabel = document.getElementById('status-' + wordId);
-
-  // Si ya está grabando esta misma palabra, detenemos
-  if (activeRecordingId === wordId && activeMediaRecorder && activeMediaRecorder.state === 'recording') {
-    stopActiveRecording();
-    return;
-  }
-
-  // Si estaba grabando otra palabra, paramos primero
-  if (activeMediaRecorder && activeMediaRecorder.state === 'recording') {
-    stopActiveRecording();
-  }
-
-  navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
-    getAudioContext(); // Activar contexto
-
-    recordedAudioChunks = [];
-    activeRecordingId = wordId;
-
-    // 1. Configurar MediaRecorder
-    activeMediaRecorder = new MediaRecorder(stream);
-    activeMediaRecorder.ondataavailable = function(e) {
-      if (e.data && e.data.size > 0) {
-        recordedAudioChunks.push(e.data);
-      }
-    };
-
-    activeMediaRecorder.onstop = function() {
-      var audioBlob = new Blob(recordedAudioChunks, { type: 'audio/webm; codecs=opus' });
-      // Detener los tracks del micrófono
-      stream.getTracks().forEach(function(track) { track.stop(); });
-
-      // Decodificar a AudioBuffer usando FileReader para máxima compatibilidad
-      var reader = new FileReader();
-      reader.onloadend = function() {
-        var arrayBuffer = reader.result;
-        var ctx = getAudioContext();
-        ctx.decodeAudioData(arrayBuffer, function(decodedBuffer) {
-          voiceRecordings[wordId] = voiceRecordings[wordId] || {};
-          voiceRecordings[wordId].blob = audioBlob;
-          voiceRecordings[wordId].audioBuffer = decodedBuffer;
-        }, function(decodeErr) {
-          console.warn('Error decodificando audio buffer:', decodeErr);
-        });
-      };
-      reader.readAsArrayBuffer(audioBlob);
-
-      recBtn.classList.remove('recording');
-      recBtn.innerHTML = '🎙️ Grabar de nuevo';
-
-      if (!voiceRecordings[wordId] || !voiceRecordings[wordId].isValidated) {
-        const approveBtn = document.getElementById(`btn-approve-${wordId}`);
-        if (approveBtn) approveBtn.style.display = 'inline-block';
-        if (statusLabel && statusLabel.classList.contains('listening')) {
-          statusLabel.className = 'record-status-text';
-          statusLabel.textContent = `Audio grabado. ¿Pronunciaste "${targetWord}"?`;
-        }
-      }
-    };
-
-    activeMediaRecorder.start();
-    recBtn.classList.add('recording');
-    recBtn.innerHTML = '⏹️ Detener Grabación';
-
-    if (statusLabel) {
-      statusLabel.className = 'record-status-text listening';
-      statusLabel.textContent = '🎤 Escuchando... Di "' + targetWord + '"';
-    }
-
-    // 2. Configurar Reconocimiento de Voz (Web Speech API)
-    startSpeechRecognition(wordId, targetWord);
-
-  }).catch(function(err) {
-    console.error('Error accediendo al micrófono:', err);
-    if (statusLabel) {
-      statusLabel.textContent = '⚠️ Permiso de micrófono denegado.';
-    }
-    alert('Por favor, permite el acceso al micrófono en tu navegador para practicar la voz.');
-  });
-}
-
-function stopActiveRecording() {
-  if (activeMediaRecorder && activeMediaRecorder.state === 'recording') {
-    activeMediaRecorder.stop();
-  }
-  if (activeSpeechRecognizer) {
-    try { activeSpeechRecognizer.stop(); } catch (e) {}
-  }
-}
-
-function startSpeechRecognition(wordId, targetWord) {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const statusLabel = document.getElementById(`status-${wordId}`);
-  const approveBtn = document.getElementById(`btn-approve-${wordId}`);
-
-  if (!SpeechRecognition) {
-    console.warn('SpeechRecognition no está soportado en este navegador');
-    if (statusLabel) {
-      statusLabel.textContent = '🎙️ Grabando audio (Reconocimiento no disponible, pulsa aprobar)';
-    }
-    if (approveBtn) approveBtn.style.display = 'inline-block';
-    return;
-  }
-
-  activeSpeechRecognizer = new SpeechRecognition();
-  activeSpeechRecognizer.lang = 'es-ES';
-  activeSpeechRecognizer.continuous = false;
-  activeSpeechRecognizer.interimResults = false;
-
-  activeSpeechRecognizer.onresult = (event) => {
-    const transcript = event.results[0][0].transcript.trim().toLowerCase();
-    console.log(`Reconocido: "${transcript}" para palabra objetivo: "${targetWord}"`);
-
-    // Comprobar coincidencia
-    const matched = checkWordMatch(wordId, transcript);
-    if (matched) {
-      handleWordRecognizedSuccess(wordId, targetWord, transcript);
-    } else {
-      handleWordRecognizedFail(wordId, targetWord, transcript);
-    }
-  };
-
-  activeSpeechRecognizer.onerror = (event) => {
-    console.warn('Speech recognition error:', event.error);
-    if (statusLabel && activeRecordingId === wordId) {
-      statusLabel.className = 'record-status-text';
-      statusLabel.textContent = `Audio grabado. ¿Pronunciaste "${targetWord}"?`;
-    }
-    if (approveBtn) approveBtn.style.display = 'inline-block';
-  };
-
-  activeSpeechRecognizer.onend = () => {
-    if ((!voiceRecordings[wordId] || !voiceRecordings[wordId].isValidated) && activeRecordingId === wordId) {
-      if (approveBtn) approveBtn.style.display = 'inline-block';
-      if (statusLabel && statusLabel.classList.contains('listening')) {
-        statusLabel.className = 'record-status-text';
-        statusLabel.textContent = `Audio grabado. ¿Pronunciaste "${targetWord}"?`;
-      }
-    }
-  };
-
-  try {
-    activeSpeechRecognizer.start();
-  } catch (e) {
-    console.warn('Error iniciando SpeechRecognition:', e);
-  }
-}
-
-function checkWordMatch(wordId, recognizedText) {
-  const sentence = SENTENCES_DATA[currentSentenceKey];
-  const item = sentence.voiceWords.find(w => w.id === wordId);
-  if (!item) return false;
-
-  const cleanText = recognizedText.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-  
-  // Buscar coincidencia en los términos permitidos
-  return item.matchTerms.some(term => {
-    const cleanTerm = term.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    return cleanText.includes(cleanTerm) || cleanTerm.includes(cleanText);
-  });
-}
-
-function markVoiceWordAsValidated(wordId, validationMethod, statusText, confettiCount) {
-  voiceRecordings[wordId] = voiceRecordings[wordId] || {};
-  voiceRecordings[wordId].isValidated = true;
-
-  playCorrectSound();
-  triggerConfetti(validationMethod === 'speech' ? 1500 : 1000, confettiCount);
-
-  const statusLabel = document.getElementById(`status-${wordId}`);
-  if (statusLabel) {
-    statusLabel.className = 'record-status-text ok';
-    statusLabel.textContent = statusText;
-  }
-
-  const approveBtn = document.getElementById(`btn-approve-${wordId}`);
-  if (approveBtn) approveBtn.style.display = 'none';
-
-  const row = document.getElementById(`row-${wordId}`);
-  if (row) row.classList.add('recorded-success');
-
-  // Habilitar botones de reproducción y modulación
-  enablePlaybackButtons(wordId);
-
-  // Registrar parte de voz en Supabase y completar intento si las 3 palabras están listas
-  const sentence = SENTENCES_DATA[currentSentenceKey];
-  if (sentence && currentAttemptState) {
-    const wordIdx = sentence.voiceWords.findIndex(w => w.id === wordId);
-    if (wordIdx !== -1) {
-      const targetItem = sentence.voiceWords[wordIdx];
-      const errorsCount = currentAttemptState.voiceErrors[wordId] || 0;
-      recordPartResult('voice_word', wordIdx + 1, targetItem.word, errorsCount, validationMethod);
-    }
-
-    const allValidated = sentence.voiceWords.every(
-      w => voiceRecordings[w.id] && voiceRecordings[w.id].isValidated === true
-    );
-    if (allValidated && currentAttemptState.status === 'in_progress') {
-      currentAttemptState.status = 'completed';
-      const durationSeconds = Math.max(1, Math.round((Date.now() - currentAttemptState.startedAtMs) / 1000));
-      completeCurrentAttempt(currentAttemptState, durationSeconds);
-    }
-  }
-}
-
-function handleWordRecognizedSuccess(wordId, targetWord, transcript) {
-  stopActiveRecording();
-  markVoiceWordAsValidated(
-    wordId,
-    'speech',
-    `⭐ ¡Excelente pronunciación! (${transcript})`,
-    40
-  );
-}
-
-function handleWordRecognizedFail(wordId, targetWord, transcript) {
-  stopActiveRecording();
-
-  if (currentAttemptState) {
-    currentAttemptState.voiceErrors[wordId] = (currentAttemptState.voiceErrors[wordId] || 0) + 1;
-  }
-
-  const statusLabel = document.getElementById(`status-${wordId}`);
-  if (statusLabel) {
-    statusLabel.className = 'record-status-text';
-    statusLabel.textContent = `Dijiste: "${transcript}". ¡Inténtalo de nuevo con "${targetWord}"!`;
-  }
-
-  // Permitir al profesor / terapeuta aprobar manualmente si lo desea
-  const approveBtn = document.getElementById(`btn-approve-${wordId}`);
-  if (approveBtn) approveBtn.style.display = 'inline-block';
-}
-
-function manualApproveWord(wordId) {
-  markVoiceWordAsValidated(
-    wordId,
-    'manual',
-    '⭐ ¡Audio validado y guardado!',
-    30
-  );
-}
-
-function enablePlaybackButtons(wordId) {
-  ['btn-play-normal', 'btn-play-squeaky', 'btn-play-deep'].forEach(prefix => {
-    const btn = document.getElementById(`${prefix}-${wordId}`);
-    if (btn) btn.disabled = false;
-  });
-}
-
-// ============================================================================
-// MODULACIÓN DE VOZ (CHILLONA / GRUESA / NORMAL)
-// ============================================================================
-function playRecordedAudioEffect(wordId, effectType) {
-  const rec = voiceRecordings[wordId];
-  if (!rec || !rec.audioBuffer) {
-    alert('Aún no has grabado tu voz para esta palabra.');
-    return;
-  }
-
-  try {
-    const ctx = getAudioContext();
-
-    // Detener reproducción anterior si existe
-    if (activeAudioSource) {
-      try { activeAudioSource.stop(); } catch (e) {}
-    }
-
-    const source = ctx.createBufferSource();
-    source.buffer = rec.audioBuffer;
-
-    if (effectType === 'squeaky') {
-      // 🐿️ VOZ CHILLONA (PlaybackRate acelerado a 1.6 + ecualizador de agudos)
-      source.playbackRate.value = 1.6;
-
-      const highpass = ctx.createBiquadFilter();
-      highpass.type = 'highpass';
-      highpass.frequency.value = 600;
-
-      source.connect(highpass);
-      highpass.connect(ctx.destination);
-
-    } else if (effectType === 'deep') {
-      // 🐻 VOZ GRUESA (PlaybackRate ralentizado a 0.72 + ecualizador de graves)
-      source.playbackRate.value = 0.72;
-
-      const bass = ctx.createBiquadFilter();
-      bass.type = 'lowpass';
-      bass.frequency.value = 1200;
-
-      source.connect(bass);
-      bass.connect(ctx.destination);
-
-    } else {
-      // 🔁 VOZ NORMAL (Velocidad 1.0)
-      source.playbackRate.value = 1.0;
-      source.connect(ctx.destination);
-    }
-
-    activeAudioSource = source;
-    source.start(0);
-
-    // Animación en el botón correspondiente
-    const btn = document.getElementById(`btn-play-${effectType}-${wordId}`);
-    if (btn) {
-      btn.style.transform = 'scale(0.95)';
-      setTimeout(() => btn.style.transform = '', 200);
-    }
-
-  } catch (err) {
-    console.error('Error reproduciendo efecto de audio:', err);
-  }
-}
-
-
-// ============================================================================
-// TAPit: SESION DE USO, ESCUCHA DEL APARATO Y FICHAS
-// ============================================================================
-
-// Se llama cuando ya hay una familia identificada (login o sesion recordada)
 function onFamilyReady() {
+  renderFamily();
+  goToWait();
+  lastDeviceEventId = null;
   ensureAppSession().then(() => startDevicePolling());
   showInstallHintIfNeeded();
+  requestWakeLock();
 }
 
-// Abre una sesion nueva si no hay una reciente (menos de 10 min sin uso)
+/* ===================================================================
+   SESIÓN DE USO (cada vez que se abre la app)
+   =================================================================== */
 async function ensureAppSession() {
   if (!currentFamilySession) return null;
   let stored = null;
-  try {
-    stored = JSON.parse(localStorage.getItem(APP_SESSION_STORAGE_KEY) || 'null');
-  } catch (e) {}
-
+  try { stored = JSON.parse(localStorage.getItem(APP_SESSION_STORAGE_KEY) || 'null'); } catch (e) {}
   const now = Date.now();
   if (stored && stored.id && stored.familyId === currentFamilySession.family_id &&
       now - stored.lastActivityMs < APP_SESSION_TIMEOUT_MS) {
@@ -1521,10 +395,7 @@ async function ensureAppSession() {
     touchAppSession(true);
     return currentAppSessionId;
   }
-
-  const id = typeof appOpenSession === 'function'
-    ? await appOpenSession(currentFamilySession.family_id)
-    : null;
+  const id = await appOpenSession(currentFamilySession.family_id);
   currentAppSessionId = id;
   if (id) {
     lastSessionTouchMs = now;
@@ -1536,27 +407,26 @@ async function ensureAppSession() {
 function saveAppSessionLocal(id, lastActivityMs) {
   try {
     localStorage.setItem(APP_SESSION_STORAGE_KEY, JSON.stringify({
-      id,
-      familyId: currentFamilySession ? currentFamilySession.family_id : null,
-      lastActivityMs
+      id, familyId: currentFamilySession ? currentFamilySession.family_id : null, lastActivityMs
     }));
   } catch (e) {}
 }
 
-// Marca actividad (en el telefono siempre; en Supabase como maximo 1 vez por minuto)
 function touchAppSession(force = false) {
   if (!currentAppSessionId) return;
   const now = Date.now();
   saveAppSessionLocal(currentAppSessionId, now);
   if (force || now - lastSessionTouchMs > 60 * 1000) {
     lastSessionTouchMs = now;
-    if (typeof appTouchSession === 'function') appTouchSession(currentAppSessionId);
+    appTouchSession(currentAppSessionId);
   }
 }
 
-// Envia una orden al aparato de la familia (sin bloquear la pantalla)
+/* ===================================================================
+   APARATO: órdenes y escucha de fichas
+   =================================================================== */
 function sendDeviceCommand(command, arg = null) {
-  if (!currentFamilySession || typeof appSendCommand !== 'function') return;
+  if (!currentFamilySession) return;
   appSendCommand(currentFamilySession.family_id, command, arg);
 }
 
@@ -1577,18 +447,15 @@ async function pollDeviceOnce() {
   devicePollBusy = true;
   try {
     const res = await appPoll(currentFamilySession.family_id, lastDeviceEventId);
-    if (!res || !res.ok) {
-      renderDeviceStatus(null);
-      return;
-    }
-    renderDeviceStatus(res);
+    lastDeviceRes = res && res.ok ? res : null;
+    renderDeviceStatus(lastDeviceRes);
+    if (!lastDeviceRes) return;
 
-    // Primera consulta: solo tomar como referencia el ultimo evento (no lecturas viejas)
+    // Primera consulta: solo se toma como referencia (no se usan lecturas viejas)
     if (lastDeviceEventId === null) {
       lastDeviceEventId = res.last_event_id || 0;
       return;
     }
-
     if (res.card && res.card.event_id > lastDeviceEventId) {
       lastDeviceEventId = res.card.event_id;
       handleCardDetected(res.card);
@@ -1600,115 +467,406 @@ async function pollDeviceOnce() {
   }
 }
 
-function isActivityInProgress() {
-  const activity = document.getElementById('screen-activity');
-  return Boolean(activity && activity.classList.contains('active') &&
-    currentAttemptState && currentAttemptState.status === 'in_progress');
+function isGameInProgress() {
+  return Boolean(game && game.status === 'in_progress' && currentScreen() === 'activity');
 }
 
-// Llega una ficha leida por el aparato
 function handleCardDetected(card) {
   if (!card || card.role === 'config') return;
+  if (isGameInProgress()) return;               // durante la actividad, otras fichas se ignoran
 
-  // Durante una actividad, otras fichas se ignoran
-  if (isActivityInProgress()) return;
-
-  closeEmptyModal();
-
-  const key = card.sentence_key;
-  if (!key || !SENTENCES_DATA[key]) {
-    showUnknownCardModal(card.card_uid);
+  closeModal();
+  const key = (card.sentence_key || '').toUpperCase();
+  if (!key || !FICHAS[key]) {
+    showUnknownCard(card.card_uid);
     return;
   }
-
-  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-  startSentenceActivity(key, null, card.card_uid);
+  touchAppSession();
+  stopSpeaking();
+  game = null;
+  pendingCard = { key, cardUid: card.card_uid || null };
+  preloadPictos(FICHAS[key]);
+  sendDeviceCommand('start');
+  goToMode();
 }
 
-function showUnknownCardModal(cardUid) {
-  const modal = document.getElementById('empty-modal');
-  const title = document.getElementById('modal-sentence-title');
-  const text = document.getElementById('modal-sentence-text');
-  if (title) title.textContent = 'Esta ficha aún no está lista';
-  if (text) {
-    text.innerHTML = 'Prueba con otra ficha.<br><span class="modal-uid">Código: ' +
-      String(cardUid || '').replace(/[^0-9A-F]/gi, '') + '</span>';
-  }
-  if (modal) modal.classList.add('active');
-}
-
-// Indicador "TAPit conectado / sin conexion"
 function renderDeviceStatus(res) {
   const pill = document.getElementById('device-status');
   const label = document.getElementById('device-status-label');
   const help = document.getElementById('device-status-help');
-  if (!pill || !label) return;
-
-  let state = 'unknown';
-  let text = 'Buscando ' + APP_NAME + '...';
+  const led = document.getElementById('wait-led');
+  let state = 'offline';
+  let text;
   let helpText = '';
 
   if (res && res.has_device === false) {
-    state = 'offline';
     text = 'Sin ' + APP_NAME + ' asignado';
     helpText = 'Avisa a quien te entregó ' + APP_NAME + '.';
   } else if (res && res.online) {
     state = 'online';
     text = APP_NAME + ' conectado';
   } else if (res) {
-    state = 'offline';
     text = APP_NAME + ' sin conexión';
     helpText = 'Revisa que esté enchufado y que la luz azul esté fija.';
   } else {
-    state = 'offline';
     text = 'Sin internet en el teléfono';
     helpText = 'Revisa tu conexión WiFi.';
   }
-
   pill.dataset.state = state;
   label.textContent = text;
-  if (help) {
-    help.textContent = helpText;
-    help.style.display = helpText ? 'block' : 'none';
-  }
+  help.textContent = helpText;
+  help.style.display = helpText ? 'block' : 'none';
+  if (led) led.setAttribute('fill', state === 'online' ? '#2FCB8E' : '#FF7A59');
 }
 
-// Sugerencia de "Agregar a pantalla de inicio" en iPhone (solo si no esta instalada)
+function showUnknownCard(uid) {
+  const clean = String(uid || '').replace(/[^0-9A-F]/gi, '');
+  openModal({
+    title: 'Esta ficha aún no está lista',
+    html: 'Prueba con otra ficha.' + (clean ? '<br><span class="modal-uid">Código: ' + clean + '</span>' : ''),
+    actions: [{ label: 'Entendido', style: 'navy' }]
+  });
+}
+
+/* ===================================================================
+   PANTALLAS
+   =================================================================== */
+function goToWait() {
+  stopSpeaking();
+  pendingCard = null;
+  showScreen('wait');
+  if (lastDeviceRes) renderDeviceStatus(lastDeviceRes);
+}
+
+function chip(text, cls = '') {
+  const el = document.createElement('span');
+  el.className = 'chip' + (cls ? ' ' + cls : '');
+  if (text) el.textContent = text;
+  return el;
+}
+
+function goToMode() {
+  const ficha = FICHAS[pendingCard.key];
+  const strip = document.getElementById('mode-strip');
+  strip.innerHTML = '';
+  const ready = chip('', 'ready');
+  ready.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Ficha lista';
+  strip.appendChild(ready);
+  strip.appendChild(chip(ficha.inicio));
+  ficha.tapas.forEach(() => strip.appendChild(chip('', 'cover')));
+  strip.appendChild(chip(ficha.final));
+
+  const t0 = ficha.tapas[0];
+  document.getElementById('mode-sub-numero').textContent = 'uno o varios · ' + t0.palabra + ' / ' + t0.numero;
+  const conGenero = ficha.tapas.find((t) => t.genero);
+  document.getElementById('mode-sub-genero').textContent = conGenero
+    ? 'él o ella · ' + conGenero.palabra + ' / ' + conGenero.genero
+    : 'él o ella';
+  showScreen('mode');
+}
+
+function leaveMode() {
+  sendDeviceCommand('finish');
+  goToWait();
+}
+
+/* ------------------------------ Actividad ------------------------------ */
+function startGame(mode) {
+  if (!pendingCard) return;
+  getAudioContext();
+  const ficha = FICHAS[pendingCard.key];
+  game = {
+    key: pendingCard.key,
+    cardUid: pendingCard.cardUid,
+    ficha,
+    mode,
+    plan: buildPlan(ficha, mode),
+    step: 0,
+    errors: [0, 0, 0],
+    startedAtMs: Date.now(),
+    status: 'in_progress',
+    attemptId: null,
+    attemptPromise: null,
+    locked: false
+  };
+  pendingCard = null;
+  touchAppSession();
+
+  const g = game;
+  g.attemptPromise = appStartAttempt({
+    familyId: currentFamilySession ? currentFamilySession.family_id : null,
+    appSessionId: currentAppSessionId,
+    sentenceKey: g.key,
+    sentenceText: sentenceOf(ficha),
+    cardUid: g.cardUid,
+    mode
+  }).then((id) => { g.attemptId = id; return id; }).catch(() => null);
+
+  showScreen('activity');
+  renderStep();
+}
+
+function renderStars(done) {
+  const pill = document.getElementById('stars-pill');
+  pill.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    pill.insertAdjacentHTML('beforeend',
+      '<svg width="26" height="26" viewBox="0 0 24 24" class="' + (i < done ? 'on' : '') + '"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z"/></svg>');
+  }
+  pill.setAttribute('aria-label', 'Paso ' + Math.min(done + 1, 3) + ' de 3');
+}
+
+function renderActivityStrip() {
+  const strip = document.getElementById('activity-strip');
+  strip.innerHTML = '';
+  strip.appendChild(chip(game.ficha.inicio));
+  game.plan.forEach((p, i) => {
+    if (i < game.step) strip.appendChild(chip(p.palabra, 'done'));
+    else if (i === game.step) strip.appendChild(chip('?', 'ask'));
+    else strip.appendChild(chip('', 'cover'));
+  });
+  strip.appendChild(chip(game.ficha.final, 'muted'));
+}
+
+function renderStep() {
+  const step = game.plan[game.step];
+  renderStars(game.step);
+  renderActivityStrip();
+  game.locked = false;
+
+  const options = [
+    { word: step.palabra, correct: true },
+    { word: step.distractor, correct: false }
+  ];
+  if (Math.random() < 0.5) options.reverse();
+
+  const box = document.getElementById('options');
+  box.innerHTML = '';
+  box.classList.remove('locked');
+  options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'option c' + i;
+    btn.appendChild(pictoElement(opt.word));
+    const w = document.createElement('span');
+    w.className = 'word' + (opt.word.length > 8 ? ' long' : '');
+    w.textContent = opt.word;
+    btn.appendChild(w);
+    btn.addEventListener('click', () => chooseOption(btn, opt));
+    box.appendChild(btn);
+  });
+}
+
+function chooseOption(btn, opt) {
+  if (!game || game.locked || game.status !== 'in_progress') return;
+  touchAppSession();
+  const step = game.plan[game.step];
+
+  if (!opt.correct) {
+    game.errors[game.step] += 1;
+    playErrorSound();
+    btn.classList.remove('wrong');
+    void btn.offsetWidth;
+    btn.classList.add('wrong');
+    setTimeout(() => btn.classList.add('disabled'), 450);
+    return;
+  }
+
+  game.locked = true;
+  document.getElementById('options').classList.add('locked');
+  btn.classList.add('right');
+  playCorrectSound();
+  speak(step.palabra.toLowerCase());
+  sendDeviceCommand('open', step.index);
+  savePart(game, step, game.errors[game.step]);
+
+  game.step += 1;
+  renderStars(game.step);
+  renderActivityStrip();
+
+  const g = game;
+  setTimeout(() => {
+    if (game !== g || g.status !== 'in_progress') return;
+    if (g.step >= 3) finishGame();
+    else renderStep();
+  }, 1100);
+}
+
+async function savePart(g, step, errors) {
+  const id = g.attemptId || (await g.attemptPromise);
+  if (!id) return;
+  appSavePart({
+    attemptId: id,
+    partIndex: step.index,
+    targetWord: step.palabra,
+    distractorWord: step.distractor,
+    errorType: step.tipo,
+    errorsCount: errors
+  });
+}
+
+function finishGame() {
+  const g = game;
+  g.status = 'completed';
+  const seconds = Math.max(1, Math.round((Date.now() - g.startedAtMs) / 1000));
+  Promise.resolve(g.attemptId || g.attemptPromise).then((id) => {
+    if (id) completeExerciseAttempt(id, seconds);
+  });
+  sendDeviceCommand('finish');
+  showDone(g);
+}
+
+function showDone(g) {
+  const chips = document.getElementById('done-chips');
+  chips.innerHTML = '';
+  const words = [{ w: g.ficha.inicio }].concat(g.plan.map((p) => ({ w: p.palabra, hit: true })), [{ w: g.ficha.final }]);
+  words.forEach((item) => {
+    const c = document.createElement('div');
+    c.className = 'done-chip' + (item.hit ? ' hit' : '');
+    c.appendChild(pictoElement(item.w, true));
+    const s = document.createElement('span');
+    s.className = 'w';
+    s.textContent = item.w;
+    c.appendChild(s);
+    chips.appendChild(c);
+  });
+  const sentence = sentenceOf(g.ficha);
+  document.getElementById('done-sentence').textContent = sentence;
+  const titles = ['¡Excelente!', '¡Muy bien!', '¡Lo lograste!', '¡Genial!'];
+  document.getElementById('done-title').textContent = titles[Math.floor(Math.random() * titles.length)];
+
+  showScreen('done');
+  playVictoryFanfare();
+  launchConfetti(110);
+  setTimeout(() => { if (currentScreen() === 'done') speak(sentence); }, 900);
+}
+
+function abandonGame(useKeepalive) {
+  const g = game;
+  if (!g || g.status !== 'in_progress') return;
+  g.status = 'abandoned';
+  const seconds = Math.max(1, Math.round((Date.now() - g.startedAtMs) / 1000));
+  if (useKeepalive) {
+    if (g.attemptId) abandonExerciseAttempt(g.attemptId, seconds, true);
+    return;
+  }
+  Promise.resolve(g.attemptId || g.attemptPromise).then((id) => {
+    if (id) abandonExerciseAttempt(id, seconds, false);
+  });
+}
+
+function askPause() {
+  openModal({
+    title: 'Pausa',
+    text: '¿Quieres terminar esta ficha?',
+    actions: [
+      { label: 'Seguir jugando', style: 'navy' },
+      { label: 'Terminar', style: 'soft', onClick: () => {
+        abandonGame(false);
+        game = null;
+        sendDeviceCommand('finish');
+        goToWait();
+      } }
+    ]
+  });
+}
+
+/* ===================================================================
+   MODAL
+   =================================================================== */
+function openModal({ title, text, html, actions }) {
+  const modal = document.getElementById('modal');
+  document.getElementById('modal-title').textContent = title || '';
+  const body = document.getElementById('modal-text');
+  if (html) body.innerHTML = html; else body.textContent = text || '';
+  const box = document.getElementById('modal-actions');
+  box.innerHTML = '';
+  (actions || []).forEach((a) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = a.style === 'soft' ? 'btn-soft' : 'btn-navy';
+    b.textContent = a.label;
+    b.addEventListener('click', () => { closeModal(); if (a.onClick) a.onClick(); });
+    box.appendChild(b);
+  });
+  modal.classList.add('active');
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeModal() {
+  const modal = document.getElementById('modal');
+  modal.classList.remove('active');
+  modal.setAttribute('aria-hidden', 'true');
+}
+
+/* ===================================================================
+   EXTRAS: agregar a inicio, pantalla siempre encendida
+   =================================================================== */
 function showInstallHintIfNeeded() {
   const hint = document.getElementById('install-hint');
-  if (!hint) return;
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent || '');
-  const isStandalone = window.navigator.standalone === true ||
+  const standalone = window.navigator.standalone === true ||
     (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
   let dismissed = false;
   try { dismissed = localStorage.getItem('tapit_install_hint_closed') === '1'; } catch (e) {}
-  hint.style.display = (isIos && !isStandalone && !dismissed) ? 'flex' : 'none';
+  hint.style.display = isIos && !standalone && !dismissed ? 'flex' : 'none';
 }
 
 function closeInstallHint() {
-  const hint = document.getElementById('install-hint');
-  if (hint) hint.style.display = 'none';
+  document.getElementById('install-hint').style.display = 'none';
   try { localStorage.setItem('tapit_install_hint_closed', '1'); } catch (e) {}
 }
 
-// Al volver a la app: nueva sesion si paso mucho tiempo, y escuchar de nuevo
+let wakeLock = null;
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator && !document.hidden && !wakeLock) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    }
+  } catch (e) { wakeLock = null; }
+}
+
 document.addEventListener('visibilitychange', () => {
   if (!currentFamilySession) return;
   if (document.hidden) {
     stopDevicePolling();
   } else {
     ensureAppSession().then(() => startDevicePolling());
+    requestWakeLock();
   }
 });
 
-// Inicialización de sesión familiar, selector de voces y eventos
+window.addEventListener('pagehide', () => {
+  if (!currentFamilySession) return;
+  if ((game && game.status === 'in_progress') || currentScreen() === 'mode') {
+    appSendCommandKeepalive(currentFamilySession.family_id, 'finish');
+  }
+  abandonGame(true);
+});
+
+/* ===================================================================
+   INICIO
+   =================================================================== */
 function initApp() {
-  initVoiceSelector();
-  initLoginScreen();
+  fitStage();
+  document.querySelectorAll('[data-login]').forEach((f) => f.addEventListener('submit', handleLoginSubmit));
+  document.getElementById('btn-logout').addEventListener('click', askLogout);
+  document.getElementById('btn-install-close').addEventListener('click', closeInstallHint);
+  document.getElementById('btn-mode-back').addEventListener('click', leaveMode);
+  document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => startGame(b.dataset.mode)));
+  document.getElementById('btn-pause').addEventListener('click', askPause);
+  document.getElementById('btn-listen').addEventListener('click', () => { if (game) speak(sentenceOf(game.ficha)); });
+  document.getElementById('btn-next').addEventListener('click', () => { game = null; goToWait(); });
+
+  const saved = loadFamilySession();
+  if (saved) {
+    currentFamilySession = saved;
+    onFamilyReady();
+  } else {
+    showScreen('login');
+  }
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initApp);
-} else {
-  initApp();
-}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initApp);
+else initApp();

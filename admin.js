@@ -5,11 +5,23 @@
  */
 
 // Oraciones disponibles para asignar a las fichas (deben coincidir con SENTENCES_DATA de app.js)
-const SENTENCE_OPTIONS = [
-  { key: 'A', text: 'La niña come una sopa' },
-  { key: 'B', text: 'La chica lava los platos' },
-  { key: 'C', text: 'La mamá lee un libro' }
-];
+// Las fichas salen del banco (fichas.js)
+const SENTENCE_OPTIONS = Object.keys(FICHAS).map((key) => {
+  const f = FICHAS[key];
+  const text = [f.inicio].concat(f.tapas.map((t) => t.palabra), [f.final]).join(' ').toLowerCase();
+  return { key, text: text.charAt(0).toUpperCase() + text.slice(1) };
+});
+
+const MODE_LABEL = { numero: 'Número', genero: 'Género' };
+const TYPE_LABEL = { numero: 'núm', genero: 'gén', absurdo: 'abs' };
+
+function errorsByType(attempts) {
+  const t = { numero: 0, genero: 0, absurdo: 0 };
+  attempts.forEach((a) => (a.errors || []).forEach((p) => {
+    if (p.error_type && t[p.error_type] !== undefined) t[p.error_type] += p.errors || 0;
+  }));
+  return t;
+}
 
 const REFRESH_MS = 10000;
 const TZ = 'America/Lima';
@@ -174,6 +186,9 @@ function renderFamilies(d) {
     const errors = attempts.reduce((s, a) => s + totalErrors(a), 0);
     const perSession = sessions.length ? (attempts.length / sessions.length).toFixed(1) : '0';
     const lastOpen = sessions.length ? sessions[0].started_at : null;
+    const byType = errorsByType(attempts);
+    const nNum = attempts.filter((a) => a.mode === 'numero').length;
+    const nGen = attempts.filter((a) => a.mode === 'genero').length;
 
     const pill = dev
       ? (dev.online
@@ -200,6 +215,8 @@ function renderFamilies(d) {
         </div>
         <div class="meta">
           Última apertura de la app: <b>${fmtDateTime(lastOpen)}</b><br>
+          Modo elegido: <b>Número ${nNum}</b> · <b>Género ${nGen}</b><br>
+          Errores por tipo: <b>número ${byType.numero}</b> · <b>género ${byType.genero}</b> · <b>absurdo ${byType.absurdo}</b><br>
           Fichas acercadas al aparato: <b>${reads}</b><br>
           Aparato visto por última vez: <b>${dev ? ago(dev.last_seen_at) : '—'}</b>
         </div>
@@ -247,13 +264,14 @@ function renderSessions(d, famName) {
     $('sessions').innerHTML = '<tr><td class="empty">Todavía no hay sesiones.</td></tr>';
     return;
   }
-  const head = '<tr><th>Familia</th><th>Apertura</th><th class="num">Duración</th><th>Fichas (oración · resultado · errores por paso)</th></tr>';
+  const head = '<tr><th>Familia</th><th>Apertura</th><th class="num">Duración</th><th>Fichas (oración · modo · resultado · errores por tapa)</th></tr>';
   const rows = sessions.map((s) => {
     const atts = d.attempts.filter((a) => a.session_id === s.id).slice().reverse();
     const tags = atts.length ? atts.map((a) => {
       const st = attemptStatus(a);
-      const errs = (a.errors || []).map((p) => p.errors).join('-') || '—';
-      return `<div><span class="tag ${st.cls}">${esc(a.sentence_key)} · ${st.label}</span><span class="errs">errores ${esc(errs)}</span></div>`;
+      const errs = (a.errors || []).map((p) => p.errors + (p.error_type ? ' ' + TYPE_LABEL[p.error_type] : '')).join(' · ') || '—';
+      const mode = a.mode ? MODE_LABEL[a.mode] + ' · ' : '';
+      return `<div><span class="tag ${st.cls}">${esc(a.sentence_key)} · ${esc(mode)}${st.label}</span><span class="errs">errores ${esc(errs)}</span></div>`;
     }).join('') : '<span class="errs">Abrió la app sin jugar fichas</span>';
     return `<tr>
       <td>${esc(famName[s.family_id] || '—')}</td>
@@ -357,16 +375,18 @@ function downloadCsv() {
   dashData.families.forEach((f) => { famName[f.id] = f.name; });
   const sesStart = {};
   dashData.sessions.forEach((s) => { sesStart[s.id] = s.started_at; });
-  const rows = [['familia', 'sesion_apertura', 'ficha_uid', 'oracion', 'texto', 'estado', 'inicio', 'fin', 'duracion_seg', 'errores_paso1', 'errores_paso2', 'errores_paso3', 'errores_total']];
+  const rows = [['familia', 'sesion_apertura', 'ficha_uid', 'oracion', 'texto', 'modo', 'estado', 'inicio', 'fin', 'duracion_seg',
+    'tapa1_palabra', 'tapa1_distractor', 'tapa1_tipo', 'tapa1_errores',
+    'tapa2_palabra', 'tapa2_distractor', 'tapa2_tipo', 'tapa2_errores',
+    'tapa3_palabra', 'tapa3_distractor', 'tapa3_tipo', 'tapa3_errores', 'errores_total']];
   dashData.attempts.forEach((a) => {
-    const e = { 1: '', 2: '', 3: '' };
-    (a.errors || []).forEach((p) => { e[p.part] = p.errors; });
+    const e = { 1: ['', '', '', ''], 2: ['', '', '', ''], 3: ['', '', '', ''] };
+    (a.errors || []).forEach((p) => { e[p.part] = [p.word || '', p.distractor || '', p.error_type || '', p.errors]; });
     rows.push([
       famName[a.family_id] || '', a.session_id ? fmtDateTime(sesStart[a.session_id]) : '',
-      a.card_uid || '', a.sentence_key, a.sentence_text, attemptStatus(a).label,
-      fmtDateTime(a.started_at), fmtDateTime(a.completed_at), a.duration_seconds || '',
-      e[1], e[2], e[3], totalErrors(a)
-    ]);
+      a.card_uid || '', a.sentence_key, a.sentence_text, a.mode ? MODE_LABEL[a.mode] : '', attemptStatus(a).label,
+      fmtDateTime(a.started_at), fmtDateTime(a.completed_at), a.duration_seconds || ''
+    ].concat(e[1], e[2], e[3], [totalErrors(a)]));
   });
   const csv = rows.map((r) => r.map((v) => `"${String(v === null || v === undefined ? '' : v).replace(/"/g, '""')}"`).join(',')).join('\n');
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });

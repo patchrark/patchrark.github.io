@@ -387,14 +387,29 @@ function appSendCommandKeepalive(familyId, command, arg = null) {
   } catch (err) {}
 }
 
-/** Inicia un intento ligado a la ficha, la sesion de uso y el aparato. Devuelve attemptId o null. */
-async function appStartAttempt({ familyId, appSessionId, sentenceKey, sentenceText, cardUid }) {
+/** Inicia un intento ligado a la ficha, el modo elegido, la sesion de uso y el aparato. Devuelve attemptId o null. */
+async function appStartAttempt({ familyId, appSessionId, sentenceKey, sentenceText, cardUid, mode }) {
   const payload = await callRpc('app_start_attempt', {
     p_family_id: familyId,
     p_app_session_id: appSessionId || null,
     p_sentence_key: sentenceKey,
     p_sentence_text: sentenceText,
-    p_card_uid: cardUid || null
+    p_card_uid: cardUid || null,
+    p_mode: mode || null
   });
   return payload && payload.ok ? payload.attempt_id : null;
+}
+
+/** Guarda el resultado de una tapa (1-3): palabra correcta, distractor, tipo de error y errores. */
+async function appSavePart({ attemptId, partIndex, targetWord, distractorWord, errorType, errorsCount }) {
+  if (!attemptId) return false;
+  const payload = await callRpc('app_save_part', {
+    p_attempt_id: attemptId,
+    p_part_index: partIndex,
+    p_target_word: targetWord,
+    p_distractor_word: distractorWord || null,
+    p_error_type: errorType || null,
+    p_errors_count: errorsCount || 0
+  });
+  return Boolean(payload && payload.ok);
 }
