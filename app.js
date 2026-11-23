@@ -374,8 +374,11 @@ function logout() {
 
 function onFamilyReady() {
   renderFamily();
+  renderFichaMenu();
   goToWait();
   lastDeviceEventId = null;
+  // Si una actividad anterior quedó abierta (app cerrada a mitad), libera el aparato para que lea fichas
+  sendDeviceCommand('finish');
   ensureAppSession().then(() => startDevicePolling());
   showInstallHintIfNeeded();
   requestWakeLock();
@@ -488,6 +491,41 @@ function handleCardDetected(card) {
   preloadPictos(FICHAS[key]);
   sendDeviceCommand('start');
   goToMode();
+}
+
+// Menú de fichas (mientras el aparato no use lector NFC)
+function renderFichaMenu() {
+  const box = document.getElementById('ficha-menu');
+  if (!box || box.childElementCount) return;
+  Object.keys(FICHAS).forEach((key) => {
+    const f = FICHAS[key];
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ficha-btn';
+    b.appendChild(pictoElement(f.tapas[0].palabra, true));
+    const t = document.createElement('span');
+    t.innerHTML = '<b>' + key + '</b><small></small>';
+    t.querySelector('small').textContent = f.tapas[0].palabra + ' · ' + f.final;
+    b.appendChild(t);
+    b.addEventListener('click', () => chooseFichaFromMenu(key));
+    box.appendChild(b);
+  });
+}
+
+async function chooseFichaFromMenu(key) {
+  if (!FICHAS[key] || isGameInProgress()) return;
+  getAudioContext();
+  touchAppSession();
+  stopSpeaking();
+  game = null;
+  pendingCard = { key, cardUid: null };
+  preloadPictos(FICHAS[key]);
+  goToMode();
+  // Las órdenes van en orden: primero cerrar las tapas, luego marcar la actividad
+  if (currentFamilySession) {
+    await appSendCommand(currentFamilySession.family_id, 'close_all', null);
+    await appSendCommand(currentFamilySession.family_id, 'start', null);
+  }
 }
 
 function renderDeviceStatus(res) {
@@ -832,6 +870,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     stopDevicePolling();
   } else {
+    if (currentScreen() === 'wait') sendDeviceCommand('finish');
     ensureAppSession().then(() => startDevicePolling());
     requestWakeLock();
   }
