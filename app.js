@@ -23,6 +23,8 @@ let devicePollBusy = false;
 let lastDeviceEventId = null;
 let lastDeviceRes = null;
 
+// TAPit sin electrónica: la ficha se elige en la pantalla (cambiar a true si vuelve el lector NFC)
+const USAR_APARATO = false;
 let pendingCard = null;     // ficha leída, esperando que se elija el modo: { key, cardUid }
 let game = null;            // actividad en curso
 
@@ -396,13 +398,13 @@ function touchAppSession(force = false) {
    APARATO: órdenes y escucha de fichas
    =================================================================== */
 function sendDeviceCommand(command, arg = null) {
-  if (!currentFamilySession) return;
+  if (!USAR_APARATO || !currentFamilySession) return;
   appSendCommand(currentFamilySession.family_id, command, arg);
 }
 
 function startDevicePolling() {
   stopDevicePolling();
-  if (!currentFamilySession) return;
+  if (!USAR_APARATO || !currentFamilySession) return;
   pollDeviceOnce();
   devicePollTimer = setInterval(pollDeviceOnce, DEVICE_POLL_MS);
 }
@@ -472,12 +474,32 @@ function selectFicha(key, cardUid) {
   touchAppSession();
   pendingCard = { key, cardUid };
   preloadFicha(FICHAS[key]);
-  const st = document.getElementById('ficha-status');
-  st.dataset.state = 'ready';
-  document.getElementById('ficha-status-label').textContent =
-    'Ficha ' + key + ' lista · ' + (FICHAS[key].tipo === 'historia' ? FICHAS[key].titulo : fichaTexto(key));
-  document.getElementById('btn-setup-ready').disabled = false;
   playNotes([[880, 0.12]]);
+  setupReady();
+}
+
+function renderFichaCards() {
+  const box = document.getElementById('ficha-cards');
+  box.innerHTML = '';
+  familyFichas().forEach((k) => {
+    const f = FICHAS[k];
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ficha-card';
+    const img = document.createElement('img');
+    img.alt = '';
+    img.src = 'img/fichas/' + k + '.jpg';
+    img.onerror = () => { img.remove(); };
+    const t = document.createElement('span');
+    t.className = 'ficha-card-text';
+    t.innerHTML = '<b>' + k + '</b>';
+    const s = document.createElement('small');
+    s.textContent = f.tipo === 'historia' ? f.titulo : fichaTexto(k);
+    t.appendChild(s);
+    b.append(img, t);
+    b.addEventListener('click', () => selectFicha(k, null));
+    box.appendChild(b);
+  });
 }
 
 function showFichaPicker() {
@@ -597,11 +619,7 @@ function goToSetup() {
   pendingCard = null;
   game = null;
   closeOverlay();
-  renderTapas('setup-tapas', {});
-  const st = document.getElementById('ficha-status');
-  st.dataset.state = 'waiting';
-  document.getElementById('ficha-status-label').textContent = 'Esperando la ficha…';
-  document.getElementById('btn-setup-ready').disabled = true;
+  renderFichaCards();
   showScreen('setup');
   if (lastDeviceRes) renderDeviceStatus(lastDeviceRes);
 }
@@ -941,7 +959,7 @@ document.addEventListener('visibilitychange', () => {
 
 window.addEventListener('pagehide', () => {
   if (!currentFamilySession) return;
-  if (isGameInProgress() || pendingCard) {
+  if (USAR_APARATO && (isGameInProgress() || pendingCard)) {
     appSendCommandKeepalive(currentFamilySession.family_id, 'finish');
   }
   abandonGame(true);
@@ -955,8 +973,6 @@ function initApp() {
   document.querySelectorAll('[data-login]').forEach((f) => f.addEventListener('submit', handleLoginSubmit));
   document.getElementById('btn-logout').addEventListener('click', askLogout);
   document.getElementById('btn-install-close').addEventListener('click', closeInstallHint);
-  document.getElementById('btn-setup-ready').addEventListener('click', setupReady);
-  document.getElementById('btn-conexion').addEventListener('click', showFichaPicker);
   document.getElementById('btn-mode-back').addEventListener('click', goToSetup);
   document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => prepareGame(b.dataset.mode)));
   document.getElementById('btn-hints-back').addEventListener('click', () => {

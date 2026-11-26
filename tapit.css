@@ -405,3 +405,18 @@ body.portrait:not([data-screen="login"]) .rotate-overlay { display: flex; }
 
 .tapas { margin-top: 18px; }
 #activity-question { font-size: 22px; white-space: nowrap; }
+
+/* Fichas para elegir (sin electrónica) */
+#screen-setup .setup-col { top: 92px; gap: 16px; }
+#screen-setup .setup-col h1 { font-size: 28px; }
+.ficha-cards { display: flex; gap: 14px; justify-content: center; }
+.ficha-card {
+  width: 172px; border: none; padding: 0; border-radius: 18px; overflow: hidden; background: #FFFFFF;
+  box-shadow: 0 5px 0 rgba(30,42,120,0.25); display: flex; flex-direction: column; text-align: left; color: var(--noche);
+  transition: transform .12s;
+}
+.ficha-card:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(30,42,120,0.25); }
+.ficha-card img { width: 100%; height: 118px; object-fit: cover; object-position: center 35%; display: block; background: #FFF4D6; }
+.ficha-card-text { padding: 7px 10px 9px; display: flex; flex-direction: column; gap: 1px; }
+.ficha-card-text b { font-family: var(--titulos); font-weight: 600; font-size: 18px; line-height: 1; }
+.ficha-card-text small { font-size: 12px; font-weight: 800; color: #4B5694; line-height: 1.2; }
