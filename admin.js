@@ -6,11 +6,7 @@
 
 // Oraciones disponibles para asignar a las fichas (deben coincidir con SENTENCES_DATA de app.js)
 // Las fichas salen del banco (fichas.js)
-const SENTENCE_OPTIONS = Object.keys(FICHAS).map((key) => {
-  const f = FICHAS[key];
-  const text = [f.inicio].concat(f.tapas.map((t) => t.palabra), [f.final]).join(' ').toLowerCase();
-  return { key, text: text.charAt(0).toUpperCase() + text.slice(1) };
-});
+const SENTENCE_OPTIONS = Object.keys(FICHAS).map((key) => ({ key, text: fichaTexto(key) }));
 
 const MODE_LABEL = { numero: 'Número', genero: 'Género' };
 const TYPE_LABEL = { numero: 'núm', genero: 'gén', absurdo: 'abs' };

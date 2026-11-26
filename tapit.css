@@ -265,7 +265,7 @@ body.portrait .only-port { display: block; }
 .done-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .done-sentence { font-family: var(--titulos); font-weight: 600; font-size: 22px; line-height: 1.1; }
 .done-badge {
-  position: absolute; left: 470px; top: 44px; width: 96px; height: 96px; border-radius: 48px;
+  position: absolute; left: 515px; top: 8px; width: 84px; height: 84px; border-radius: 42px;
   background: var(--menta); border: 6px solid #FFFFFF; transform: rotate(10deg);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   box-shadow: 0 6px 0 var(--menta-sombra);
@@ -299,7 +299,7 @@ body.portrait:not([data-screen="login"]) .rotate-overlay { display: flex; }
   animation: aparecer 0.25s ease-out;
 }
 .modal-card h2 { font-family: var(--titulos); font-weight: 600; font-size: 24px; margin-bottom: 6px; }
-.modal-card p { font-size: 16px; font-weight: 700; color: #4B5694; line-height: 1.35; }
+.modal-card p, .modal-text { font-size: 16px; font-weight: 700; color: #4B5694; line-height: 1.35; }
 .modal-uid { display: inline-block; margin-top: 6px; font-size: 12px; color: #9AA6D6; letter-spacing: 1px; }
 .modal-actions { display: flex; gap: 10px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
 .modal-actions button { height: 48px; padding: 0 20px; border-radius: 24px; font-size: 18px; }
@@ -310,3 +310,98 @@ body.portrait:not([data-screen="login"]) .rotate-overlay { display: flex; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
 }
+
+/* =====================================================================
+   v3 · Tapas manuales: pantallas del adulto en amarillo
+   ===================================================================== */
+.screen-yellow { background: var(--amarillo); color: var(--noche); }
+.logo.dark { color: var(--noche); }
+.logo.dark span { color: #FFFFFF; }
+.family-pill.dark { background: rgba(30,42,120,0.10); color: var(--noche); }
+.icon-btn.glass.dark { background: rgba(30,42,120,0.10); }
+.icon-btn.navy-soft { background: rgba(30,42,120,0.10); }
+.adult-tag {
+  position: absolute; left: 50%; top: 66px; transform: translateX(-50%);
+  height: 22px; padding: 0 10px; border-radius: 11px; background: var(--noche); color: var(--amarillo);
+  font-size: 11px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; display: flex; align-items: center; white-space: nowrap;
+}
+#screen-hints .adult-tag { top: 78px; }
+#screen-mode .adult-tag { top: 30px; left: 72px; transform: none; }
+.adult-tag.inline { position: static; transform: none; align-self: center; }
+.setup-col { position: absolute; left: 0; top: 96px; width: 844px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+#screen-hints .setup-col { top: 108px; }
+.setup-col h1 { font-family: var(--titulos); font-weight: 600; font-size: 32px; line-height: 1.05; color: var(--noche); }
+.setup-sub { font-size: 15px; font-weight: 700; color: #6B5300; }
+.setup-actions { display: flex; align-items: center; gap: 18px; }
+.setup-actions .btn-navy { width: 200px; }
+.btn-navy:disabled { opacity: 0.35; box-shadow: none; }
+.btn-link { border: none; background: none; color: var(--noche); font-weight: 800; font-size: 15px; text-decoration: underline; padding: 8px; }
+.ribbon.navy { background: var(--noche); box-shadow: 0 5px 0 var(--noche-sombra); color: #FFFFFF; }
+
+/* Dibujo de las 5 tapas */
+.tapas { display: flex; gap: 8px; align-items: flex-end; }
+.tapa {
+  width: 56px; height: 62px; border-radius: 14px; background: var(--noche); color: #FFFFFF;
+  display: flex; align-items: center; justify-content: center; position: relative;
+  font-family: var(--titulos); font-weight: 700; font-size: 24px; box-shadow: 0 4px 0 var(--noche-sombra);
+}
+.tapa.open { background: #FFFFFF; color: var(--noche); border: 3px dashed var(--noche); box-shadow: none; transform: translateY(-10px); }
+.tapa.open::after { content: '▲'; position: absolute; top: -20px; font-size: 13px; color: var(--noche); }
+.tapa.go { animation: subir 1.1s ease-in-out infinite; }
+.tapa.done { background: var(--menta); color: #FFFFFF; box-shadow: 0 4px 0 var(--menta-sombra); transform: translateY(-10px); }
+.tapas.big .tapa { width: 74px; height: 82px; font-size: 32px; }
+@keyframes subir { 0%, 100% { transform: translateY(-10px); } 50% { transform: translateY(-18px); } }
+
+.ficha-status {
+  height: 36px; padding: 0 16px 0 12px; border-radius: 18px; background: #FFFFFF; color: var(--noche);
+  display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 15px;
+}
+.ficha-status[data-state="ready"] .status-dot { background: var(--menta); }
+.ficha-status[data-state="waiting"] .status-dot { background: #FFC83D; box-shadow: 0 0 0 4px rgba(30,42,120,0.12); animation: latido 1.6s infinite; }
+.status-mini {
+  position: absolute; right: 24px; bottom: 16px; height: 30px; padding: 0 12px 0 10px; border-radius: 15px;
+  background: rgba(255,255,255,0.7); color: var(--noche); display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800;
+}
+.status-mini .status-dot { width: 10px; height: 10px; border-radius: 5px; background: #B5BEE6; }
+.status-mini[data-state="online"] .status-dot { background: var(--menta); }
+.status-mini[data-state="offline"] .status-dot { background: var(--coral); }
+#screen-setup .install-hint { background: rgba(30,42,120,0.85); color: #FFFFFF; }
+
+/* Botón de repetir la pregunta */
+.ribbon.with-btn { padding-right: 8px; gap: 12px; pointer-events: auto; }
+.speak-btn { width: 38px; height: 38px; border: none; border-radius: 19px; background: rgba(255,255,255,0.22); display: flex; align-items: center; justify-content: center; }
+.speak-btn:active { transform: scale(0.92); }
+.ribbon-row { pointer-events: none; }
+
+/* Aviso del adulto encima del juego */
+.adult-overlay { display: none; position: absolute; inset: 0; background: rgba(15,22,80,0.45); align-items: center; justify-content: center; z-index: 5; }
+.adult-overlay.active { display: flex; }
+.adult-card {
+  width: 460px; padding: 18px 22px 20px; border-radius: 28px; background: var(--amarillo); color: var(--noche);
+  display: flex; flex-direction: column; align-items: center; gap: 14px; box-shadow: 0 8px 0 var(--amarillo-sombra);
+  animation: aparecer 0.25s ease-out;
+}
+.adult-card h2 { font-family: var(--titulos); font-weight: 600; font-size: 28px; text-align: center; }
+.adult-card .btn-navy { width: 200px; }
+
+/* Historias: opciones con imagen */
+.option.story { width: 230px; height: 210px; padding: 8px; gap: 6px; }
+.option.story .scene { width: 100%; flex: 1; min-height: 0; border-radius: 18px; overflow: hidden; background: rgba(255,255,255,0.85); display: flex; align-items: center; justify-content: center; }
+.option.story .scene img { width: 100%; height: 100%; object-fit: contain; }
+.option.story .scene .cap { padding: 10px; font-family: var(--titulos); font-weight: 600; font-size: 19px; line-height: 1.15; color: var(--noche); text-align: center; }
+.chip.num { min-width: 40px; justify-content: center; }
+.done-chip .thumb { width: 100%; flex: 1; min-height: 0; border-radius: 10px; overflow: hidden; background: rgba(255,255,255,0.8); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; padding: 3px; text-align: center; line-height: 1.1; color: var(--noche); }
+.done-chip .thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Selector de fichas (problemas de conexión) */
+.ficha-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.ficha-grid button {
+  border: none; border-radius: 16px; background: var(--nube); color: var(--noche); padding: 10px 12px; text-align: left;
+  font-family: var(--texto); box-shadow: 0 4px 0 #DCE2FF;
+}
+.ficha-grid b { display: block; font-family: var(--titulos); font-weight: 600; font-size: 20px; }
+.ficha-grid small { display: block; font-size: 12px; font-weight: 800; color: #4B5694; line-height: 1.2; }
+.modal-card.wide { width: min(440px, 100%); }
+
+.tapas { margin-top: 18px; }
+#activity-question { font-size: 22px; white-space: nowrap; }

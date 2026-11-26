@@ -1,6 +1,7 @@
 /* =====================================================================
    TAPit · app de la familia
-   Flujo: código de familia → "Acerca una ficha" → ¿Número o Género? →
+   Flujo: código → (adulto) baja tapas y pon la ficha → ¿Número o Género? →
+   sube las pistas →
    3 tapas (2 opciones cada una) → ¡Ficha completa!
    Todo se registra en Supabase (supabase-client.js) y el aparato recibe
    las órdenes start / open n / finish.
@@ -244,40 +245,6 @@ function preloadPictos(ficha) {
 }
 
 /* ===================================================================
-   REGLAS DE LOS MODOS
-   Número: las 3 tapas con error de número. 1 de cada 3 veces, la tapa 1
-           o la 2 (al azar) usa su absurdo.
-   Género: tapa 1 y 3 con error de género, tapa 2 (verbo) siempre absurdo.
-           1 de cada 3 veces la tapa 1 usa su absurdo. Si una palabra no
-           tiene género, usa su absurdo.
-   =================================================================== */
-function buildPlan(ficha, mode) {
-  let tipos;
-  if (mode === 'numero') {
-    tipos = ['numero', 'numero', 'numero'];
-    if (Math.random() < ABSURDO_PROBABILIDAD) {
-      const conAbsurdo = [0, 1].filter((i) => ficha.tapas[i].absurdo);
-      if (conAbsurdo.length) tipos[conAbsurdo[Math.floor(Math.random() * conAbsurdo.length)]] = 'absurdo';
-    }
-  } else {
-    tipos = ['genero', 'absurdo', 'genero'];
-    if (Math.random() < ABSURDO_PROBABILIDAD) tipos[0] = 'absurdo';
-  }
-
-  return ficha.tapas.map((tapa, i) => {
-    let tipo = tipos[i];
-    if (!tapa[tipo]) tipo = ['absurdo', 'genero', 'numero'].find((t) => tapa[t]) || tipo;
-    return { index: i + 1, palabra: tapa.palabra, distractor: tapa[tipo], tipo };
-  });
-}
-
-function sentenceOf(ficha) {
-  const words = [ficha.inicio].concat(ficha.tapas.map((t) => t.palabra), [ficha.final]);
-  const text = words.join(' ').toLowerCase();
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
-
-/* ===================================================================
    SESIÓN DE LA FAMILIA
    =================================================================== */
 function loadFamilySession() {
@@ -346,7 +313,8 @@ async function handleLoginSubmit(event) {
   saveFamilySession({
     family_id: result.family_id,
     family_label: result.family_label,
-    login_session_id: result.login_session_id
+    login_session_id: result.login_session_id,
+    family_code: code
   });
   document.querySelectorAll('[data-login] input').forEach((el) => { el.value = ''; el.blur(); });
   onFamilyReady();
@@ -374,8 +342,7 @@ function logout() {
 
 function onFamilyReady() {
   renderFamily();
-  renderFichaMenu();
-  goToWait();
+  goToSetup();
   lastDeviceEventId = null;
   // Si una actividad anterior quedó abierta (app cerrada a mitad), libera el aparato para que lea fichas
   sendDeviceCommand('finish');
@@ -470,110 +437,247 @@ async function pollDeviceOnce() {
   }
 }
 
+/* ===================================================================
+   FICHAS DE LA FAMILIA Y LECTURA DE FICHAS
+   =================================================================== */
+function familyCode() {
+  if (!currentFamilySession) return null;
+  if (currentFamilySession.family_code) return currentFamilySession.family_code.toUpperCase();
+  const m = String(currentFamilySession.family_label || '').match(/(\d+)/);
+  return m ? 'FAM' + m[1] : null;
+}
+
+function familyFichas() {
+  return FAMILIAS[familyCode()] || Object.keys(FICHAS);
+}
+
 function isGameInProgress() {
-  return Boolean(game && game.status === 'in_progress' && currentScreen() === 'activity');
+  return Boolean(game && game.status === 'in_progress');
 }
 
 function handleCardDetected(card) {
   if (!card || card.role === 'config') return;
-  if (isGameInProgress()) return;               // durante la actividad, otras fichas se ignoran
-
+  if (isGameInProgress() || ['mode', 'hints', 'activity'].includes(currentScreen())) return;
   closeModal();
+  if (currentScreen() !== 'setup') goToSetup();
   const key = (card.sentence_key || '').toUpperCase();
   if (!key || !FICHAS[key]) {
     showUnknownCard(card.card_uid);
     return;
   }
-  touchAppSession();
-  stopSpeaking();
-  game = null;
-  pendingCard = { key, cardUid: card.card_uid || null };
-  preloadPictos(FICHAS[key]);
-  sendDeviceCommand('start');
-  goToMode();
+  selectFicha(key, card.card_uid || null);
 }
 
-// Menú de fichas (mientras el aparato no use lector NFC)
-function renderFichaMenu() {
-  const box = document.getElementById('ficha-menu');
-  if (!box || box.childElementCount) return;
-  Object.keys(FICHAS).forEach((key) => {
-    const f = FICHAS[key];
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'ficha-btn';
-    b.appendChild(pictoElement(f.tapas[0].palabra, true));
-    const t = document.createElement('span');
-    t.innerHTML = '<b>' + key + '</b><small></small>';
-    t.querySelector('small').textContent = f.tapas[0].palabra + ' · ' + f.final;
-    b.appendChild(t);
-    b.addEventListener('click', () => chooseFichaFromMenu(key));
-    box.appendChild(b);
+function selectFicha(key, cardUid) {
+  touchAppSession();
+  pendingCard = { key, cardUid };
+  preloadFicha(FICHAS[key]);
+  const st = document.getElementById('ficha-status');
+  st.dataset.state = 'ready';
+  document.getElementById('ficha-status-label').textContent =
+    'Ficha ' + key + ' lista · ' + (FICHAS[key].tipo === 'historia' ? FICHAS[key].titulo : fichaTexto(key));
+  document.getElementById('btn-setup-ready').disabled = false;
+  playNotes([[880, 0.12]]);
+}
+
+function showFichaPicker() {
+  const keys = familyFichas();
+  const html = '<p>Elige la misma ficha que pusiste en TAPit.</p><div class="ficha-grid">' +
+    keys.map((k) => '<button type="button" data-k="' + k + '"><b>' + k + '</b><small></small></button>').join('') + '</div>';
+  openModal({ title: 'Problemas de conexión', html, wide: true, actions: [{ label: 'Cerrar', style: 'soft' }] });
+  document.querySelectorAll('.ficha-grid button').forEach((b) => {
+    const k = b.dataset.k;
+    b.querySelector('small').textContent = FICHAS[k].tipo === 'historia' ? FICHAS[k].titulo : fichaTexto(k);
+    b.addEventListener('click', () => { closeModal(); selectFicha(k, null); });
   });
-}
-
-async function chooseFichaFromMenu(key) {
-  if (!FICHAS[key] || isGameInProgress()) return;
-  getAudioContext();
-  touchAppSession();
-  stopSpeaking();
-  game = null;
-  pendingCard = { key, cardUid: null };
-  preloadPictos(FICHAS[key]);
-  goToMode();
-  // Las órdenes van en orden: primero cerrar las tapas, luego marcar la actividad
-  if (currentFamilySession) {
-    await appSendCommand(currentFamilySession.family_id, 'close_all', null);
-    await appSendCommand(currentFamilySession.family_id, 'start', null);
-  }
 }
 
 function renderDeviceStatus(res) {
   const pill = document.getElementById('device-status');
   const label = document.getElementById('device-status-label');
-  const help = document.getElementById('device-status-help');
-  const led = document.getElementById('wait-led');
-  let state = 'offline';
-  let text;
-  let helpText = '';
-
-  if (res && res.has_device === false) {
-    text = 'Sin ' + APP_NAME + ' asignado';
-    helpText = 'Avisa a quien te entregó ' + APP_NAME + '.';
-  } else if (res && res.online) {
-    state = 'online';
-    text = APP_NAME + ' conectado';
-  } else if (res) {
-    text = APP_NAME + ' sin conexión';
-    helpText = 'Revisa que esté enchufado y que la luz azul esté fija.';
-  } else {
-    text = 'Sin internet en el teléfono';
-    helpText = 'Revisa tu conexión WiFi.';
-  }
+  let state = 'offline'; let text;
+  if (res && res.has_device === false) text = 'Sin TAPit asignado';
+  else if (res && res.online) { state = 'online'; text = 'TAPit conectado'; }
+  else if (res) text = 'TAPit sin conexión';
+  else text = 'Sin internet en el teléfono';
   pill.dataset.state = state;
   label.textContent = text;
-  help.textContent = helpText;
-  help.style.display = helpText ? 'block' : 'none';
-  if (led) led.setAttribute('fill', state === 'online' ? '#2FCB8E' : '#FF7A59');
 }
 
 function showUnknownCard(uid) {
   const clean = String(uid || '').replace(/[^0-9A-F]/gi, '');
   openModal({
     title: 'Esta ficha aún no está lista',
-    html: 'Prueba con otra ficha.' + (clean ? '<br><span class="modal-uid">Código: ' + clean + '</span>' : ''),
+    html: 'Usa el botón “Problemas de conexión” para elegirla a mano.' + (clean ? '<br><span class="modal-uid">Código: ' + clean + '</span>' : ''),
     actions: [{ label: 'Entendido', style: 'navy' }]
   });
 }
 
 /* ===================================================================
+   DIBUJO DE LAS TAPAS
+   estados: { 1: 'open' | 'closed' | 'go' | 'done' }
+   =================================================================== */
+function renderTapas(id, estados) {
+  const box = document.getElementById(id);
+  box.innerHTML = '';
+  for (let i = 1; i <= 5; i++) {
+    const t = document.createElement('div');
+    const e = estados[i] || 'closed';
+    t.className = 'tapa' + (e === 'open' ? ' open' : e === 'go' ? ' open go' : e === 'done' ? ' done' : '');
+    t.textContent = i;
+    box.appendChild(t);
+  }
+}
+
+function listaNumeros(nums) {
+  if (nums.length === 1) return String(nums[0]);
+  return nums.slice(0, -1).join(', ') + ' y ' + nums[nums.length - 1];
+}
+
+/* ===================================================================
+   REGLAS DE LAS PISTAS
+   Oración (1 art, 2 sujeto, 3 verbo, 4 art, 5 objeto): se ve una palabra
+   del par 1-2 y una del par 4-5; el verbo siempre se adivina.
+   Historia: la 1 siempre se ve, nunca dos tapadas seguidas.
+   =================================================================== */
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+function elegirOcultas(ficha) {
+  if (ficha.tipo === 'historia') return pick([[2, 4], [2, 5], [3, 5]]);
+  const vis = [pick([1, 2]), pick([4, 5])];
+  return [1, 2, 3, 4, 5].filter((n) => !vis.includes(n));
+}
+
+function tipoError(p, tipo) {
+  for (const t of [tipo, 'absurdo', 'genero', 'numero']) if (p[t]) return t;
+  return null;
+}
+
+function planOracion(ficha, mode, ocultas) {
+  const tipos = {};
+  ocultas.forEach((n) => {
+    if (mode === 'numero') tipos[n] = 'numero';
+    else tipos[n] = n === 3 ? 'absurdo' : 'genero';
+  });
+  if (Math.random() < ABSURDO_PROBABILIDAD) {
+    const contenido = ocultas.filter((n) => [2, 3, 5].includes(n) && ficha.palabras[n - 1].absurdo && tipos[n] !== 'absurdo');
+    if (contenido.length) tipos[pick(contenido)] = 'absurdo';
+  }
+  return ocultas.map((n) => {
+    const p = ficha.palabras[n - 1];
+    const t = tipoError(p, tipos[n]);
+    return { tapa: n, correcta: p.palabra, distractor: p[t], tipo: t };
+  });
+}
+
+function planHistoria(ficha, ocultas) {
+  return ocultas.map((n) => ({ tapa: n, correcta: ficha.vinetas[n - 1].texto, distractor: ficha.vinetas[n - 1].mal, tipo: null }));
+}
+
+// Pregunta hablada: cada opción junto a su palabra compañera
+function preguntaOracion(ficha, step, a, b) {
+  const w = (i) => ficha.palabras[i - 1].palabra.toLowerCase();
+  const n = step.tapa; const A = a.toLowerCase(); const B = b.toLowerCase();
+  if (n === 1) return '¿Es ' + A + ' ' + w(2) + ' o ' + B + ' ' + w(2) + '?';
+  if (n === 2) return '¿Es ' + w(1) + ' ' + A + ' o ' + w(1) + ' ' + B + '?';
+  if (n === 3) return '¿' + cap(w(1) + ' ' + w(2)) + ' ' + A + ' o ' + w(1) + ' ' + w(2) + ' ' + B + '?';
+  if (n === 4) return '¿Es ' + A + ' ' + w(5) + ' o ' + B + ' ' + w(5) + '?';
+  return '¿Es ' + w(4) + ' ' + A + ' o ' + w(4) + ' ' + B + '?';
+}
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+function preguntaHistoria(a, b) {
+  return '¿Qué pasa después? ¿' + a.replace(/\.$/, '') + '? ¿O ' + b.charAt(0).toLowerCase() + b.slice(1).replace(/\.$/, '') + '?';
+}
+
+/* ===================================================================
    PANTALLAS
    =================================================================== */
-function goToWait() {
+function goToSetup() {
   stopSpeaking();
   pendingCard = null;
-  showScreen('wait');
+  game = null;
+  closeOverlay();
+  renderTapas('setup-tapas', {});
+  const st = document.getElementById('ficha-status');
+  st.dataset.state = 'waiting';
+  document.getElementById('ficha-status-label').textContent = 'Esperando la ficha…';
+  document.getElementById('btn-setup-ready').disabled = true;
+  showScreen('setup');
   if (lastDeviceRes) renderDeviceStatus(lastDeviceRes);
+}
+
+function setupReady() {
+  if (!pendingCard) return;
+  getAudioContext();
+  const ficha = FICHAS[pendingCard.key];
+  if (ficha.tipo === 'historia') { prepareGame('historia'); return; }
+  const p = ficha.palabras;
+  const conNumero = p[1].numero ? p[1] : p.find((x) => x.numero);
+  const conGenero = p.find((x) => x.genero && x.palabra.length > 3) || p.find((x) => x.genero);
+  document.getElementById('mode-sub-numero').textContent = 'uno o varios · ' + conNumero.palabra + ' / ' + conNumero.numero;
+  document.getElementById('mode-sub-genero').textContent = conGenero ? 'él o ella · ' + conGenero.palabra + ' / ' + conGenero.genero : 'él o ella';
+  showScreen('mode');
+}
+
+function prepareGame(mode) {
+  const ficha = FICHAS[pendingCard.key];
+  const ocultas = elegirOcultas(ficha);
+  const visibles = [1, 2, 3, 4, 5].filter((n) => !ocultas.includes(n));
+  const plan = ficha.tipo === 'historia' ? planHistoria(ficha, ocultas) : planOracion(ficha, mode, ocultas);
+  game = {
+    key: pendingCard.key, cardUid: pendingCard.cardUid, ficha, mode, plan, visibles,
+    step: 0, errors: plan.map(() => 0), status: 'ready', attemptId: null, attemptPromise: null, locked: false
+  };
+  const estados = {}; visibles.forEach((n) => { estados[n] = 'go'; });
+  renderTapas('hints-tapas', estados);
+  document.getElementById('hints-title').textContent = 'Sube las tapas ' + listaNumeros(visibles);
+  showScreen('hints');
+  speak('Sube las tapas ' + listaNumeros(visibles), 0.95);
+}
+
+function startGame() {
+  const g = game;
+  if (!g) return;
+  g.status = 'in_progress';
+  g.startedAtMs = Date.now();
+  sendDeviceCommand('start');
+  touchAppSession();
+  g.attemptPromise = appStartAttempt({
+    familyId: currentFamilySession ? currentFamilySession.family_id : null,
+    appSessionId: currentAppSessionId,
+    sentenceKey: g.key,
+    sentenceText: fichaTexto(g.key),
+    cardUid: g.cardUid,
+    mode: g.mode
+  }).then((id) => { g.attemptId = id; return id; }).catch(() => null);
+  showScreen('activity');
+  renderStep();
+}
+
+function renderStars() {
+  const pill = document.getElementById('stars-pill');
+  pill.innerHTML = '';
+  game.plan.forEach((_, i) => {
+    pill.insertAdjacentHTML('beforeend',
+      '<svg width="26" height="26" viewBox="0 0 24 24" class="' + (i < game.step ? 'on' : '') + '"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z"/></svg>');
+  });
+}
+
+function renderActivityStrip() {
+  const strip = document.getElementById('activity-strip');
+  strip.innerHTML = '';
+  const actual = game.plan[game.step];
+  for (let n = 1; n <= 5; n++) {
+    const idx = game.plan.findIndex((p) => p.tapa === n);
+    const resuelta = idx >= 0 && idx < game.step;
+    const historia = game.ficha.tipo === 'historia';
+    const texto = historia ? String(n) : game.ficha.palabras[n - 1].palabra;
+    if (idx < 0) strip.appendChild(chip(texto, historia ? 'num' : ''));
+    else if (resuelta) strip.appendChild(chip(texto, 'done' + (historia ? ' num' : '')));
+    else if (actual && actual.tapa === n) strip.appendChild(chip('?', 'ask'));
+    else strip.appendChild(chip('', 'cover'));
+  }
+  if (game.ficha.tipo === 'historia') strip.appendChild(chip('6', 'num muted'));
 }
 
 function chip(text, cls = '') {
@@ -583,161 +687,108 @@ function chip(text, cls = '') {
   return el;
 }
 
-function goToMode() {
-  const ficha = FICHAS[pendingCard.key];
-  const strip = document.getElementById('mode-strip');
-  strip.innerHTML = '';
-  const ready = chip('', 'ready');
-  ready.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Ficha lista';
-  strip.appendChild(ready);
-  strip.appendChild(chip(ficha.inicio));
-  ficha.tapas.forEach(() => strip.appendChild(chip('', 'cover')));
-  strip.appendChild(chip(ficha.final));
-
-  const t0 = ficha.tapas[0];
-  document.getElementById('mode-sub-numero').textContent = 'uno o varios · ' + t0.palabra + ' / ' + t0.numero;
-  const conGenero = ficha.tapas.find((t) => t.genero);
-  document.getElementById('mode-sub-genero').textContent = conGenero
-    ? 'él o ella · ' + conGenero.palabra + ' / ' + conGenero.genero
-    : 'él o ella';
-  showScreen('mode');
-}
-
-function leaveMode() {
-  sendDeviceCommand('finish');
-  goToWait();
-}
-
-/* ------------------------------ Actividad ------------------------------ */
-function startGame(mode) {
-  if (!pendingCard) return;
-  getAudioContext();
-  const ficha = FICHAS[pendingCard.key];
-  game = {
-    key: pendingCard.key,
-    cardUid: pendingCard.cardUid,
-    ficha,
-    mode,
-    plan: buildPlan(ficha, mode),
-    step: 0,
-    errors: [0, 0, 0],
-    startedAtMs: Date.now(),
-    status: 'in_progress',
-    attemptId: null,
-    attemptPromise: null,
-    locked: false
-  };
-  pendingCard = null;
-  touchAppSession();
-
-  const g = game;
-  g.attemptPromise = appStartAttempt({
-    familyId: currentFamilySession ? currentFamilySession.family_id : null,
-    appSessionId: currentAppSessionId,
-    sentenceKey: g.key,
-    sentenceText: sentenceOf(ficha),
-    cardUid: g.cardUid,
-    mode
-  }).then((id) => { g.attemptId = id; return id; }).catch(() => null);
-
-  showScreen('activity');
-  renderStep();
-}
-
-function renderStars(done) {
-  const pill = document.getElementById('stars-pill');
-  pill.innerHTML = '';
-  for (let i = 0; i < 3; i++) {
-    pill.insertAdjacentHTML('beforeend',
-      '<svg width="26" height="26" viewBox="0 0 24 24" class="' + (i < done ? 'on' : '') + '"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z"/></svg>');
-  }
-  pill.setAttribute('aria-label', 'Paso ' + Math.min(done + 1, 3) + ' de 3');
-}
-
-function renderActivityStrip() {
-  const strip = document.getElementById('activity-strip');
-  strip.innerHTML = '';
-  strip.appendChild(chip(game.ficha.inicio));
-  game.plan.forEach((p, i) => {
-    if (i < game.step) strip.appendChild(chip(p.palabra, 'done'));
-    else if (i === game.step) strip.appendChild(chip('?', 'ask'));
-    else strip.appendChild(chip('', 'cover'));
-  });
-  strip.appendChild(chip(game.ficha.final, 'muted'));
+function sceneElement(ficha, n, mala, texto) {
+  const box = document.createElement('div');
+  box.className = 'scene';
+  const cap = document.createElement('div');
+  cap.className = 'cap';
+  cap.textContent = texto;
+  box.appendChild(cap);
+  const img = new Image();
+  img.alt = texto;
+  img.onload = () => { box.innerHTML = ''; box.appendChild(img); };
+  img.src = 'img/historias/' + ficha.imagenes + '_' + n + (mala ? '_mal' : '') + '.jpg';
+  return box;
 }
 
 function renderStep() {
   const step = game.plan[game.step];
-  renderStars(game.step);
+  renderStars();
   renderActivityStrip();
   game.locked = false;
-
-  const options = [
-    { word: step.palabra, correct: true },
-    { word: step.distractor, correct: false }
-  ];
+  const options = [{ word: step.correcta, correct: true }, { word: step.distractor, correct: false }];
   if (Math.random() < 0.5) options.reverse();
-
+  const historia = game.ficha.tipo === 'historia';
   const box = document.getElementById('options');
   box.innerHTML = '';
   box.classList.remove('locked');
   options.forEach((opt, i) => {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'option c' + i;
-    btn.appendChild(pictoElement(opt.word));
-    const w = document.createElement('span');
-    w.className = 'word' + (opt.word.length > 8 ? ' long' : '');
-    w.textContent = opt.word;
-    btn.appendChild(w);
+    btn.className = 'option c' + i + (historia ? ' story' : '');
+    if (historia) {
+      btn.appendChild(sceneElement(game.ficha, step.tapa, !opt.correct, opt.word));
+    } else {
+      btn.appendChild(pictoElement(opt.word));
+      const w = document.createElement('span');
+      w.className = 'word' + (opt.word.length > 8 ? ' long' : '');
+      w.textContent = opt.word;
+      btn.appendChild(w);
+    }
     btn.addEventListener('click', () => chooseOption(btn, opt));
     box.appendChild(btn);
   });
+  game.question = historia
+    ? preguntaHistoria(options[0].word, options[1].word)
+    : preguntaOracion(game.ficha, step, options[0].word, options[1].word);
+  document.getElementById('activity-question').textContent = historia ? '¿Qué pasa después?' : game.question;
+  setTimeout(() => { if (game && currentScreen() === 'activity') speak(game.question); }, 450);
 }
 
 function chooseOption(btn, opt) {
   if (!game || game.locked || game.status !== 'in_progress') return;
   touchAppSession();
   const step = game.plan[game.step];
-
   if (!opt.correct) {
     game.errors[game.step] += 1;
     playErrorSound();
-    btn.classList.remove('wrong');
-    void btn.offsetWidth;
-    btn.classList.add('wrong');
+    btn.classList.remove('wrong'); void btn.offsetWidth; btn.classList.add('wrong');
     setTimeout(() => btn.classList.add('disabled'), 450);
     return;
   }
-
   game.locked = true;
   document.getElementById('options').classList.add('locked');
   btn.classList.add('right');
   playCorrectSound();
-  speak(step.palabra.toLowerCase());
-  sendDeviceCommand('open', step.index);
-  savePart(game, step, game.errors[game.step]);
-
-  game.step += 1;
-  renderStars(game.step);
-  renderActivityStrip();
-
+  speak(game.ficha.tipo === 'historia' ? '¡Muy bien!' : '¡Muy bien! ' + step.correcta.toLowerCase());
+  savePart(game, step, game.errors[game.step], game.step + 1);
   const g = game;
   setTimeout(() => {
     if (game !== g || g.status !== 'in_progress') return;
-    if (g.step >= 3) finishGame();
-    else renderStep();
-  }, 1100);
+    showOpenOverlay(step.tapa);
+  }, 900);
 }
 
-async function savePart(g, step, errors) {
+function showOpenOverlay(tapa) {
+  const estados = {};
+  game.visibles.forEach((n) => { estados[n] = 'open'; });
+  game.plan.slice(0, game.step).forEach((p) => { estados[p.tapa] = 'open'; });
+  estados[tapa] = 'go';
+  renderTapas('open-tapas', estados);
+  document.getElementById('open-title').textContent = '¡Muy bien! Sube la tapa ' + tapa;
+  document.getElementById('open-overlay').classList.add('active');
+}
+
+function closeOverlay() {
+  document.getElementById('open-overlay').classList.remove('active');
+}
+
+function openReady() {
+  closeOverlay();
+  if (!game) return;
+  game.step += 1;
+  if (game.step >= game.plan.length) finishGame();
+  else renderStep();
+}
+
+async function savePart(g, step, errors, orden) {
   const id = g.attemptId || (await g.attemptPromise);
   if (!id) return;
   appSavePart({
     attemptId: id,
-    partIndex: step.index,
-    targetWord: step.palabra,
-    distractorWord: step.distractor,
+    partIndex: orden,
+    targetWord: g.ficha.tipo === 'historia' ? 'Viñeta ' + step.tapa : step.correcta,
+    distractorWord: g.ficha.tipo === 'historia' ? 'Viñeta ' + step.tapa + ' (incorrecta)' : step.distractor,
     errorType: step.tipo,
     errorsCount: errors
   });
@@ -747,36 +798,52 @@ function finishGame() {
   const g = game;
   g.status = 'completed';
   const seconds = Math.max(1, Math.round((Date.now() - g.startedAtMs) / 1000));
-  Promise.resolve(g.attemptId || g.attemptPromise).then((id) => {
-    if (id) completeExerciseAttempt(id, seconds);
-  });
+  Promise.resolve(g.attemptId || g.attemptPromise).then((id) => { if (id) completeExerciseAttempt(id, seconds); });
   sendDeviceCommand('finish');
   showDone(g);
+}
+
+function textoCompleto(ficha) {
+  if (ficha.tipo === 'historia') return ficha.vinetas.map((v) => v.texto).join(' ');
+  const t = ficha.palabras.map((p) => p.palabra).join(' ').toLowerCase();
+  return cap(t);
 }
 
 function showDone(g) {
   const chips = document.getElementById('done-chips');
   chips.innerHTML = '';
-  const words = [{ w: g.ficha.inicio }].concat(g.plan.map((p) => ({ w: p.palabra, hit: true })), [{ w: g.ficha.final }]);
-  words.forEach((item) => {
+  const historia = g.ficha.tipo === 'historia';
+  const ocultas = g.plan.map((p) => p.tapa);
+  const n = historia ? 6 : 5;
+  for (let i = 1; i <= n; i++) {
     const c = document.createElement('div');
-    c.className = 'done-chip' + (item.hit ? ' hit' : '');
-    c.appendChild(pictoElement(item.w, true));
-    const s = document.createElement('span');
-    s.className = 'w';
-    s.textContent = item.w;
-    c.appendChild(s);
+    c.className = 'done-chip' + (ocultas.includes(i) ? ' hit' : '');
+    if (historia) {
+      const t = document.createElement('div');
+      t.className = 'thumb';
+      t.textContent = i;
+      const img = new Image();
+      img.onload = () => { t.textContent = ''; t.appendChild(img); };
+      img.src = 'img/historias/' + g.ficha.imagenes + '_' + i + '.jpg';
+      c.appendChild(t);
+    } else {
+      const w = g.ficha.palabras[i - 1].palabra;
+      c.appendChild(pictoElement(w, true));
+      const s = document.createElement('span');
+      s.className = 'w';
+      s.textContent = w;
+      c.appendChild(s);
+    }
     chips.appendChild(c);
-  });
-  const sentence = sentenceOf(g.ficha);
-  document.getElementById('done-sentence').textContent = sentence;
-  const titles = ['¡Excelente!', '¡Muy bien!', '¡Lo lograste!', '¡Genial!'];
-  document.getElementById('done-title').textContent = titles[Math.floor(Math.random() * titles.length)];
-
+  }
+  document.getElementById('done-sentence').textContent = historia ? g.ficha.titulo : textoCompleto(g.ficha);
+  document.getElementById('done-count').textContent = g.plan.length + ' / ' + g.plan.length;
+  document.getElementById('done-sub').textContent = historia ? 'Contaste toda la historia.' : 'Armaste la oración completa.';
+  document.getElementById('done-title').textContent = pick(['¡Excelente!', '¡Muy bien!', '¡Lo lograste!', '¡Genial!']);
   showScreen('done');
   playVictoryFanfare();
   launchConfetti(110);
-  setTimeout(() => { if (currentScreen() === 'done') speak(sentence); }, 900);
+  setTimeout(() => { if (currentScreen() === 'done') speak(textoCompleto(g.ficha)); }, 900);
 }
 
 function abandonGame(useKeepalive) {
@@ -784,13 +851,8 @@ function abandonGame(useKeepalive) {
   if (!g || g.status !== 'in_progress') return;
   g.status = 'abandoned';
   const seconds = Math.max(1, Math.round((Date.now() - g.startedAtMs) / 1000));
-  if (useKeepalive) {
-    if (g.attemptId) abandonExerciseAttempt(g.attemptId, seconds, true);
-    return;
-  }
-  Promise.resolve(g.attemptId || g.attemptPromise).then((id) => {
-    if (id) abandonExerciseAttempt(id, seconds, false);
-  });
+  if (useKeepalive) { if (g.attemptId) abandonExerciseAttempt(g.attemptId, seconds, true); return; }
+  Promise.resolve(g.attemptId || g.attemptPromise).then((id) => { if (id) abandonExerciseAttempt(id, seconds, false); });
 }
 
 function askPause() {
@@ -799,21 +861,22 @@ function askPause() {
     text: '¿Quieres terminar esta ficha?',
     actions: [
       { label: 'Seguir jugando', style: 'navy' },
-      { label: 'Terminar', style: 'soft', onClick: () => {
-        abandonGame(false);
-        game = null;
-        sendDeviceCommand('finish');
-        goToWait();
-      } }
+      { label: 'Terminar', style: 'soft', onClick: () => { abandonGame(false); sendDeviceCommand('finish'); goToSetup(); } }
     ]
   });
+}
+
+function preloadFicha(ficha) {
+  if (ficha.tipo === 'historia') return;
+  ficha.palabras.forEach((p) => [p.palabra, p.numero, p.genero, p.absurdo].filter(Boolean).forEach((w) => getPictoId(w)));
 }
 
 /* ===================================================================
    MODAL
    =================================================================== */
-function openModal({ title, text, html, actions }) {
+function openModal({ title, text, html, actions, wide }) {
   const modal = document.getElementById('modal');
+  modal.querySelector('.modal-card').classList.toggle('wide', Boolean(wide));
   document.getElementById('modal-title').textContent = title || '';
   const body = document.getElementById('modal-text');
   if (html) body.innerHTML = html; else body.textContent = text || '';
@@ -870,7 +933,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     stopDevicePolling();
   } else {
-    if (currentScreen() === 'wait') sendDeviceCommand('finish');
+    if (currentScreen() === 'setup' && !pendingCard) sendDeviceCommand('finish');
     ensureAppSession().then(() => startDevicePolling());
     requestWakeLock();
   }
@@ -878,7 +941,7 @@ document.addEventListener('visibilitychange', () => {
 
 window.addEventListener('pagehide', () => {
   if (!currentFamilySession) return;
-  if ((game && game.status === 'in_progress') || currentScreen() === 'mode') {
+  if (isGameInProgress() || pendingCard) {
     appSendCommandKeepalive(currentFamilySession.family_id, 'finish');
   }
   abandonGame(true);
@@ -892,11 +955,19 @@ function initApp() {
   document.querySelectorAll('[data-login]').forEach((f) => f.addEventListener('submit', handleLoginSubmit));
   document.getElementById('btn-logout').addEventListener('click', askLogout);
   document.getElementById('btn-install-close').addEventListener('click', closeInstallHint);
-  document.getElementById('btn-mode-back').addEventListener('click', leaveMode);
-  document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => startGame(b.dataset.mode)));
+  document.getElementById('btn-setup-ready').addEventListener('click', setupReady);
+  document.getElementById('btn-conexion').addEventListener('click', showFichaPicker);
+  document.getElementById('btn-mode-back').addEventListener('click', goToSetup);
+  document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => prepareGame(b.dataset.mode)));
+  document.getElementById('btn-hints-back').addEventListener('click', () => {
+    if (game && game.ficha.tipo === 'historia') goToSetup(); else showScreen('mode');
+  });
+  document.getElementById('btn-hints-ready').addEventListener('click', startGame);
+  document.getElementById('btn-repeat').addEventListener('click', () => { if (game && game.question) speak(game.question); });
+  document.getElementById('btn-open-ready').addEventListener('click', openReady);
   document.getElementById('btn-pause').addEventListener('click', askPause);
-  document.getElementById('btn-listen').addEventListener('click', () => { if (game) speak(sentenceOf(game.ficha)); });
-  document.getElementById('btn-next').addEventListener('click', () => { game = null; goToWait(); });
+  document.getElementById('btn-listen').addEventListener('click', () => { if (game) speak(textoCompleto(game.ficha)); });
+  document.getElementById('btn-next').addEventListener('click', goToSetup);
 
   const saved = loadFamilySession();
   if (saved) {
